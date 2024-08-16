@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import {createRouter, createWebHashHistory, createWebHistory} from 'vue-router'
 
 //导入组件
 import LayoutVue from '@/views/Layout.vue'
@@ -27,7 +27,8 @@ const routes = [
 
 //创建路由器
 const router = createRouter({
-    history: createWebHistory(),
+    // history: createWebHistory(),
+    history:createWebHashHistory(),
     routes: routes
 })
 
