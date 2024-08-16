@@ -7,9 +7,9 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   // base: process.env.NODE_ENV === 'production'?"/leetcodevue/":"/",
   base:'/leetcodevue/',
-  build:{
-    outDir:"docs"
-  },
+  // build:{
+  //   outDir:"docs"
+  // },
   plugins: [
     vue(),
   ],

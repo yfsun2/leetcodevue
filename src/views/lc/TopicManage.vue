@@ -105,27 +105,32 @@ const clearData = () => {
                 </div>
             </div>
         </template>
-        <el-scrollbar class="scrollbar-wrapper">
-            <div class="element-container">
-                <el-card class="box-card" v-for="item in topicList" :key="item.id"  shadow="always" type="flex">
-                    <el-row>
-                        <el-col :span="17">
+        <div v-if="topicList.length>0">
+            <el-scrollbar class="scrollbar-wrapper">
+                <div class="element-container">
+                    <el-card class="box-card" v-for="item in topicList" :key="item.id"  shadow="always" type="flex">
+                        <el-row>
+                            <el-col :span="17">
 
-                            <router-link :to="{path:'/topic/detail/'+item.id}">
-                                <el-button type="primary" size="large">
-                                    {{item.name}}
-                                </el-button>
-                            </router-link>
+                                <router-link :to="{path:'/topic/detail/'+item.id}">
+                                    <el-button type="primary" size="large">
+                                        {{item.name}}
+                                    </el-button>
+                                </router-link>
 
-                        </el-col>
-                       <el-col :span="7">
-                           <el-button :icon="Edit" circle plain type="primary" @click="showDialog(item)"></el-button>
-                           <el-button :icon="Delete" circle plain type="danger" @click="deleteTopic(item)"></el-button>
-                       </el-col>
-                    </el-row>
-                </el-card>
-            </div>
-        </el-scrollbar>
+                            </el-col>
+                            <el-col :span="7">
+                                <el-button :icon="Edit" circle plain type="primary" @click="showDialog(item)"></el-button>
+                                <el-button :icon="Delete" circle plain type="danger" @click="deleteTopic(item)"></el-button>
+                            </el-col>
+                        </el-row>
+                    </el-card>
+                </div>
+            </el-scrollbar>
+        </div>
+        <div v-else>
+            <el-empty description="没有数据"/>
+        </div>
 
         <!-- 添加分类弹窗 -->
         <el-dialog v-model="dialogVisible" :title="title" width="30%">
