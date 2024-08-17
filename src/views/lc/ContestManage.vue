@@ -298,11 +298,12 @@ const tableCellClassName=({rowIndex,columnIndex,row})=>{
                 <el-form-item label="开始时间" >
                     <el-date-picker
                         v-model="contestModel.startTime"
-                        type="date"
+                        type="datetime"
                         placeholder="开始时间"
                         :disabled-date="(time)=>time.getTime() > Date.now()"
                         size="large"
-                        format="YYYY-MM-DD"
+                        value-format="YYYY-MM-DD HH:mm:ss"
+                        format="YYYY-MM-DD HH:mm:ss"
                     />
                 </el-form-item>
                 <el-form-item>
@@ -314,6 +315,11 @@ const tableCellClassName=({rowIndex,columnIndex,row})=>{
 </template>
 
 <style lang="scss" scoped>
+
+.el-table .el-table__body tr.el-table__row:hover td {
+    background-color: inherit;
+}
+
 .page-container {
     min-height: 100%;
     box-sizing: border-box;

@@ -198,6 +198,11 @@ const filterState = (value, row, column) => {
     const property = column.property
     return row[property] === value
 }
+
+const mySort=(a,b)=>{
+    return Number(a)-Number(b)
+}
+
 </script>
 
 <template>
@@ -236,7 +241,7 @@ const filterState = (value, row, column) => {
                 <el-icon v-else size="20" ></el-icon>
             </template>
             </el-table-column>
-            <el-table-column label="题目" sortable prop="questionId">
+            <el-table-column label="题目" sortable prop="questionId" :sort-method="mySort">
                 <template #default="scope">
                     <el-tooltip content="点击进入新页面" placement="top-start" effect="light">
                         <el-link :href="scope.row.link" target="_blank" type="primary" style="text-decoration: none" :underline="false">
