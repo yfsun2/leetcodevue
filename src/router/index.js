@@ -9,6 +9,7 @@ import QuestionManageVue from '@/views/lc/QuestionManage.vue'
 import WeeklyContestVue from '@/views/lc/ContestManage.vue'
 import TopicDetailVue from "@/views/lc/TopicDetail.vue";
 import IndexVue from "@/views/Index.vue";
+import PlatformManage from "@/views/lc/PlatformManage.vue";
 
 
 //定义路由关系
@@ -18,9 +19,10 @@ const routes = [
             { path: '', component: IndexVue },
             { path: '/type', component: TypeManageVue },
             { path: '/topic', component: TopicManageVue},
-            { path: '/question', component: QuestionManageVue },
-            { path: '/contest', component: WeeklyContestVue },
+            { path: '/question/:platformId', component: QuestionManageVue ,props: true},
+            { path: '/contest/:platformId', component: WeeklyContestVue,props: true },
             { path: '/topic/detail/:topicId', component: TopicDetailVue,props:true },
+            { path: '/platform', component: PlatformManage},
         ]
     }
 ]

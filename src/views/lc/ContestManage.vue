@@ -1,10 +1,21 @@
 <script setup>
 import {Edit,Delete} from '@element-plus/icons-vue'
 import {ElMessage,ElMessageBox} from 'element-plus'
-import {ref} from 'vue'
+import {ref, watch} from 'vue'
 import {addContestService, contestPageService,deleteContestService,updateContestService} from '@/api/contest.js'
 import {questionListService} from "@/api/question.js";
 import QuestionItem from "@/components/QuestionItem.vue";
+import {queryByIdService} from "@/api/platform.js";
+
+const props=defineProps(['platformId'])
+
+watch(() => props.platformId, (newValue, oldValue) => {
+    console.log(`someProp changed from ${oldValue} to ${newValue}`);
+    queryCount()
+    onSearch()
+});
+
+const questionCount=ref([0,1,2,3])
 
 //模糊查询搜索词
 const search =ref('')
@@ -43,16 +54,31 @@ const showDialog = (row) => {
     title.value = '编辑周赛';
     //数据拷贝
     contestModel.value.contestId=row.contestId;
-    contestModel.value.type=row.type;
+    contestModel.value.typeId=row.typeId;
     contestModel.value.questionList=row.questionList;
     contestModel.value.link=row.link;
     contestModel.value.questionIdNameList=row.questionList.map((item) => {
-        return { value:item.id, label:item.name,id:item.id}
+        return { value:item.id, label:item.questionId+"."+item.name,id:item.id}
     });
     contestModel.value.startTime=row.startTime;
     //扩展id属性,将来需要传递给后台,完成修改
     contestModel.value.id = row.id;
 }
+
+const queryCount=async ()=>{
+    let params={
+        id:props.platformId
+    }
+    let result=await queryByIdService(params);
+    if(result.data.questionCount>0){
+        let arrId=[]
+        for(let i=0;i<result.data.questionCount;i++){
+            arrId.push(i)
+        }
+        questionCount.value=arrId
+    }
+}
+queryCount()
 
 //模糊查询所有竞赛
 const onSearch = async(val) => {
@@ -60,11 +86,14 @@ const onSearch = async(val) => {
         current: pageNum.value,
         size: pageSize.value,
         search: search.value ? search.value : val,
+        platformId:props.platformId
     }
     let result = await contestPageService(params);
     //渲染视图
     total.value = result.data.total;
     contestList.value = result.data.records;
+
+    debugger
 }
 
 onSearch();
@@ -73,7 +102,8 @@ const queryAllQuestion=async (query)=>{
     if(query){
         loading.value = true
         let params = {
-            search: query
+            search: query,
+            platformId: props.platformId
         }
         await questionListService(params).then((result)=>{
             setTimeout(() => {
@@ -91,22 +121,23 @@ const queryAllQuestion=async (query)=>{
 const contestModel=ref({
     id:0,
     contestId:0,
-    type:0,
+    typeId:0,
     link:'',
     questionList:[],
     questionIdNameList:[],
     startTime:0,
+    platformId:0
 })
 
 const addContest=async()=>{
     let params = {
         contestId:contestModel.value.contestId,
-        type:contestModel.value.type,
+        platformId:props.platformId,
+        type:contestModel.value.typeId,
         link:contestModel.value.link,
         questionIdList:contestModel.value.questionIdNameList.map((item)=>item.id),
         startTime:contestModel.value.startTime,
     }
-    debugger
     await addContestService(params).then((result)=>{
         ElMessage.success(result.msg? result.msg:'添加成功');
         visibleDrawer.value = false;
@@ -123,7 +154,8 @@ const updateContest= async () => {
     let params = {
         id:contestModel.value.id,
         contestId:contestModel.value.contestId,
-        type:contestModel.value.type,
+        platformId:props.platformId,
+        type:contestModel.value.typeId,
         link:contestModel.value.link,
         questionIdList:contestModel.value.questionIdNameList.map((item)=>item.id),
         startTime:contestModel.value.startTime,
@@ -170,15 +202,14 @@ const deleteContest = (row) => {
 //清空模型的数据
 const clearData = () => {
     contestModel.value.contestId = 0;
-    contestModel.value.type = 0;
+    contestModel.value.typeId = 0;
     contestModel.value.questionIdNameList = [];
 }
 
 const tableCellClassName=({rowIndex,columnIndex,row})=>{
-    debugger
-    if(row.questionList[columnIndex-1]?.stateName==="已完成"){
+    if(columnIndex>0&&row.questionList[columnIndex-1]?.stateName==="已完成"){
         return 'success-cell'
-    }else if(row.questionList[columnIndex-1]?.stateName==="尝试中"){
+    }else if(columnIndex>0&&row.questionList[columnIndex-1]?.stateName==="尝试中"){
         return 'warning-cell'
     }else {
         return ''
@@ -212,19 +243,19 @@ const tableCellClassName=({rowIndex,columnIndex,row})=>{
             <el-table-column label="竞赛" align="center">
                 <template #default="scope">
                     <el-tooltip
-                        :content="'第'+scope.row.contestId+'场'+((scope.row.type===1)?'双周赛':'周赛')"
+                        :content="'第'+scope.row.contestId+'场'+((scope.row.typeId===1)?'双周赛':'周赛')"
                         placement="top-start"
                         effect="light">
                         <el-link :href="scope.row.link" target="_blank" style="text-decoration: none" :underline="false">
                             第
-                            <el-text v-if="scope.row.type===0" type="primary">
+                            <el-text v-if="scope.row.typeId===0" type="primary">
                                 {{scope.row.contestId}}
                             </el-text>
                             <el-text v-else type="warning">
                                 {{scope.row.contestId}}
                             </el-text>
                             场
-                            <el-text v-if="scope.row.type===0" type="primary">
+                            <el-text v-if="scope.row.typeId===0" type="primary">
                                 周赛
                             </el-text>
                             <el-text v-else type="warning">
@@ -235,9 +266,9 @@ const tableCellClassName=({rowIndex,columnIndex,row})=>{
                 </template>
             </el-table-column>
             <el-table-column label="问题" align="center" >
-                <el-table-column v-for="index in [0,1,2,3]" :label="'Q'+(index+1)" align="center">
+                <el-table-column v-for="index in questionCount" :label="'Q'+(index+1)" align="center">
                     <template #default="scope">
-                        <QuestionItem :item="scope.row.questionList[index]"></QuestionItem>
+                        <QuestionItem  v-if="scope.row.questionList.length>0&&scope.row.questionList[index]" :item="scope.row.questionList[index]"></QuestionItem>
                     </template>
                 </el-table-column>
             </el-table-column>
@@ -265,7 +296,7 @@ const tableCellClassName=({rowIndex,columnIndex,row})=>{
                     <el-input-number v-model="contestModel.contestId" :min="1" :max="1000" :step="1"></el-input-number>
                 </el-form-item>
                 <el-form-item label="周赛类型">
-                    <el-radio-group v-model="contestModel.type">
+                    <el-radio-group v-model="contestModel.typeId">
                         <el-radio  :label="0">单周赛</el-radio>
                         <el-radio  :label="1">双周赛</el-radio>
                     </el-radio-group>

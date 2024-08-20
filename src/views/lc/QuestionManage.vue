@@ -1,9 +1,17 @@
 <script setup>
 import {Edit, Delete, CircleCheckFilled, CircleCheck, Clock, CircleCloseFilled} from '@element-plus/icons-vue'
-import {ref} from 'vue'
+import {ref, watch} from 'vue'
 import { questionPageService,addQuestionService,deleteQuestionService,updateQuestionService} from '@/api/question.js'
 import { typeListService} from '@/api/type.js'
 import {ElMessage,ElMessageBox} from 'element-plus'
+
+
+const props=defineProps(['platformId'])
+
+watch(() => props.platformId, (newValue, oldValue) => {
+    console.log(`someProp changed from ${oldValue} to ${newValue}`);
+    onSearch()
+});
 
 //模糊查询搜索词
 const search =ref('')
@@ -47,9 +55,9 @@ const showDialog = (row) => {
     questionModel.value.questionId = row.questionId;
     questionModel.value.name = row.name;
     questionModel.value.link = row.link;
-    questionModel.value.typeList = row.typeList.map((item)=>{
+    questionModel.value.typeList = row.typeList?(row.typeList.map((item)=>{
         return {value:item.id,label:item.name}
-    });
+    })):[];
     questionModel.value.levelId = row.levelId;
     questionModel.value.levelName = row.levelName;
     questionModel.value.difficultyScore = row.difficultyScore;
@@ -57,6 +65,7 @@ const showDialog = (row) => {
     questionModel.value.stateName = row.stateName;
     //扩展id属性,将来需要传递给后台,完成分类的修改
     questionModel.value.id = row.id
+    debugger
 }
 
 //问题展示模型
@@ -79,7 +88,9 @@ const onSearch = async(val) => {
         current: pageNum.value,
         size: pageSize.value,
         search: search.value ? search.value : val,
+        platformId:props.platformId
     }
+
     await questionPageService(params).then((result)=>{
         //渲染视图
         total.value = result.data.total;
@@ -116,7 +127,8 @@ const addQuestion=async()=>{
         typeId:questionModel.value.typeList.map((item)=>item.value).join(','),
         level:questionModel.value.levelId,
         difficultyScore:questionModel.value.difficultyScore,
-        state:questionModel.value.stateId
+        state:questionModel.value.stateId,
+        platformId:props.platformId
     }
     await addQuestionService(params).then((result)=>{
         ElMessage.success(result.msg? result.msg:'添加成功');
@@ -142,7 +154,7 @@ const updateQuestion = async () => {
         difficultyScore:questionModel.value.difficultyScore,
         state:questionModel.value.stateId
     }
-
+    debugger
     //调用接口
     await updateQuestionService(params).then((result)=>{
         ElMessage.success(result.msg ? result.msg : '修改成功')
@@ -252,10 +264,12 @@ const mySort=(a,b)=>{
             </el-table-column>
 
             <el-table-column label="类型名称" prop="typeNameList">
-                <template #default="scope">
-                    <el-tag v-for="item in scope.row.typeList">
+                <template  #default="scope">
+
+                    <el-tag   v-for="item in scope.row.typeList">
                         {{item.name}}
                     </el-tag>
+
                 </template>
             </el-table-column>
             <el-table-column label="难易程度" prop="levelName"

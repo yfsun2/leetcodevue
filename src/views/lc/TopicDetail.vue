@@ -1,4 +1,4 @@
-<script setup>
+<script lang="js" setup>
 import {typeListService} from "@/api/type.js";
 
 const props=defineProps(['topicId'])
@@ -22,9 +22,9 @@ const activeId=ref('')
 
 const topicQuestionModel=ref({
     id:0,
-    question:{},
+    question:{id:0,value:0,stateId:0},
     questionName:'',
-    topicType:{},
+    topicType:{value:0,},
     topicTypeName:'',
 })
 
@@ -130,7 +130,7 @@ const updateShip=async ()=>{
         questionId:topicQuestionModel.value.question.value,
         typeId:topicQuestionModel.value.topicType.value
     }
-    await updateTopicQuestionService(params).then((result)=>{
+    await updateTopicQuestionService(params).then(result=>{
         let config={
             id:topicQuestionModel.value.question.value,
             stateId:topicQuestionModel.value.question.stateId,

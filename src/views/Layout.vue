@@ -1,19 +1,34 @@
 <script setup>
 import {
-  Management,
-  Promotion,
-  UserFilled,
-  User,
-  Crop,
-  EditPen,
-  SwitchButton,
-  CaretBottom
+    Management,
+    Promotion,
+    UserFilled,
+    User,
+    Crop,
+    EditPen,
+    SwitchButton,
+    CaretBottom,
+    Key
 } from '@element-plus/icons-vue'
-
-
-//条目被点击后,调用的函数
+import {platformListService} from "@/api/platform.js";
 import {useRouter} from 'vue-router'
+import {ref} from 'vue'
+
 const router = useRouter();
+
+const platformList=ref([])
+
+const getPlatformList = async () => {
+    let params={
+        search:""
+    };
+    let res=await platformListService(params);
+    platformList.value=res.data;
+}
+
+getPlatformList()
+
+
 </script>
 
 <template>
@@ -22,24 +37,57 @@ const router = useRouter();
       <div class="el-aside__logo"></div>
       <el-menu active-text-color="#ffd04b" background-color="#232323"  text-color="#fff"
       :router>
-        <el-menu-item index="/type">
-          <el-icon>
-            <EditPen />
-          </el-icon>
-          <span>类型管理</span>
-        </el-menu-item>
-        <el-menu-item index="/question">
-          <el-icon>
-            <Management />
-          </el-icon>
-          <span>问题管理</span>
-        </el-menu-item>
-        <el-menu-item index="/contest">
-          <el-icon>
-            <Promotion />
-          </el-icon>
-          <span>竞赛管理</span>
-        </el-menu-item>
+          <el-sub-menu index="1">
+              <template #title>
+                  <el-icon>
+                      <EditPen />
+                  </el-icon>
+                  <span>种类管理</span>
+              </template>
+              <el-menu-item index="/type">
+                  <el-icon>
+                      <EditPen />
+                  </el-icon>
+                  <span>类型管理</span>
+              </el-menu-item>
+              <el-menu-item index="/platform">
+                  <el-icon>
+                      <EditPen />
+                  </el-icon>
+                  <span>平台管理</span>
+              </el-menu-item>
+          </el-sub-menu>
+
+          <el-sub-menu index="2">
+              <template #title>
+                  <el-icon>
+                      <Management />
+                  </el-icon>
+                  <span>问题管理</span>
+              </template>
+              <el-menu-item v-for="(item,index) in platformList" :key="index" :index="'/question/'+item.id">
+                  <el-icon>
+                      <Management />
+                  </el-icon>
+                  <span>{{item.name}}</span>
+              </el-menu-item>
+          </el-sub-menu>
+
+          <el-sub-menu index="3">
+              <template #title>
+                  <el-icon>
+                      <Promotion />
+                  </el-icon>
+                  <span>竞赛管理</span>
+              </template>
+              <el-menu-item v-for="(item,index) in platformList" :key="index" :index="'/contest/'+item.id">
+                  <el-icon>
+                      <Promotion />
+                  </el-icon>
+                  <span>{{item.name}}</span>
+              </el-menu-item>
+          </el-sub-menu>
+
         <el-menu-item index="/topic">
           <el-icon>
             <User />
