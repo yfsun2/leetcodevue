@@ -187,11 +187,12 @@ const deleteContest = (row) => {
         }
     ).then(async () => {
         //调用接口
-        deleteContestService(row.id,row.type).then((result)=>{
+        deleteContestService(row.id,row.type).then(()=>{
             ElMessage.success('删除成功');
             //刷新列表
             onSearch();
         }).catch((err)=>{
+            console.log(err)
             ElMessage.error('删除失败');
         })
     }).catch(() => {

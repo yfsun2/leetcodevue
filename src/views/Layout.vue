@@ -2,13 +2,8 @@
 import {
     Management,
     Promotion,
-    UserFilled,
     User,
-    Crop,
     EditPen,
-    SwitchButton,
-    CaretBottom,
-    Key
 } from '@element-plus/icons-vue'
 import {platformListService} from "@/api/platform.js";
 import {useRouter} from 'vue-router'

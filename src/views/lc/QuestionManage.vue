@@ -1,5 +1,5 @@
 <script setup>
-import {Edit, Delete, CircleCheckFilled, CircleCheck, Clock, CircleCloseFilled} from '@element-plus/icons-vue'
+import {Edit, Delete, CircleCheckFilled, CircleCloseFilled} from '@element-plus/icons-vue'
 import {ref, watch} from 'vue'
 import { questionPageService,addQuestionService,deleteQuestionService,updateQuestionService} from '@/api/question.js'
 import { typeListService} from '@/api/type.js'
@@ -193,7 +193,7 @@ const deleteQuestion = (row) => {
         }
     ).then(async () => {
         //调用接口
-        await deleteQuestionService(row.id).then((result)=>{
+        await deleteQuestionService(row.id).then(()=>{
             ElMessage.success('删除成功');
             //刷新列表
             onSearch();
