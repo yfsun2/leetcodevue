@@ -130,7 +130,7 @@ const updateShip=async ()=>{
         questionId:topicQuestionModel.value.question.value,
         typeId:topicQuestionModel.value.topicType.value
     }
-    await updateTopicQuestionService(params).then(result=>{
+    await updateTopicQuestionService(params).then(()=>{
         let config={
             id:topicQuestionModel.value.question.value,
             stateId:topicQuestionModel.value.question.stateId,
@@ -160,7 +160,7 @@ const deleteShip=async (row)=>{
         }
     ).then(async () => {
         //调用接口
-        await deleteTopicQuestionService(row.topicQuestionId).then((result)=>{
+        await deleteTopicQuestionService(row.topicQuestionId).then(()=>{
             ElMessage({
                 type: 'success',
                 message: '删除成功',

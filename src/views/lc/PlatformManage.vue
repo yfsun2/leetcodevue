@@ -102,7 +102,7 @@ const deletePlatform = (row) => {
         }
     ).then(async () => {
         //调用接口
-        await deletePlatformService(row.id).then(result=>{
+        await deletePlatformService(row.id).then(()=>{
             ElMessage.success('删除成功');
             //刷新列表
             onSearch();

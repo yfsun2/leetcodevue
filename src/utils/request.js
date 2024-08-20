@@ -30,7 +30,7 @@ const instance = axios.create({ baseURL })
 /* import {useRouter} from 'vue-router'
 const router = useRouter(); */
 
-import router from '@/router'
+// import router from '@/router'
 //添加响应拦截器
 instance.interceptors.response.use(
     result => {
