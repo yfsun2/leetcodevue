@@ -1,7 +1,7 @@
 import request from '@/utils/request.js'
 
-export const topicListService=()=>{
-    return request.get('/topic/list');
+export const topicListService=(params)=>{
+    return request.get('/topic/list',{params:params});
 }
 
 export const addTopicService=(data)=>{

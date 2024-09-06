@@ -4,7 +4,13 @@ import {ref} from 'vue';
 import {topicListService,addTopicService,updateTopicService,deleteTopicService} from "@/api/topic.js";
 import {ElMessage, ElMessageBox} from "element-plus";
 
+import useUserInfoStore from '@/stores/userInfo.js'
+const userInfoStore = useUserInfoStore();
+
+const userInfo = ref({...userInfoStore.info})
+
 const dialogVisible=ref(false)
+
 let title = ref("")
 
 const topicList=ref([])
@@ -31,7 +37,7 @@ const onSearch = async() => {
     let result = await topicListService();
     //渲染视图
     topicList.value = result.data;
-    debugger
+
 }
 onSearch();
 
@@ -101,7 +107,7 @@ const clearData = () => {
             <div class="header">
                 <span>题单管理</span>
                 <div class="extra">
-                    <el-button type="primary" @click="dialogVisible = true;title = '添加题单';clearData()">添加题单</el-button>
+                    <el-button type="primary" @click="dialogVisible = true;title = '添加题单';clearData()" :disabled="userInfo.power==='USER'">添加题单</el-button>
                 </div>
             </div>
         </template>
@@ -111,17 +117,15 @@ const clearData = () => {
                     <el-card class="box-card" v-for="item in topicList" :key="item.id"  shadow="always" type="flex">
                         <el-row>
                             <el-col :span="17">
-
-                                <router-link :to="{path:'/topic/detail/'+item.id}">
+                                <router-link :to="{path:'/topic/detail/'+item.id+'/'+item.name}">
                                     <el-button type="primary" size="large">
                                         {{item.name}}
                                     </el-button>
                                 </router-link>
-
                             </el-col>
                             <el-col :span="7">
-                                <el-button :icon="Edit" circle plain type="primary" @click="showDialog(item)"></el-button>
-                                <el-button :icon="Delete" circle plain type="danger" @click="deleteTopic(item)"></el-button>
+                                <el-button :icon="Edit" circle plain type="primary" @click="showDialog(item)" :disabled="userInfo.power==='USER'"></el-button>
+                                <el-button :icon="Delete" circle plain type="danger" @click="deleteTopic(item)" :disabled="userInfo.power==='USER'"></el-button>
                             </el-col>
                         </el-row>
                     </el-card>

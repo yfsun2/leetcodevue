@@ -10,10 +10,15 @@ import WeeklyContestVue from '@/views/lc/ContestManage.vue'
 import TopicDetailVue from "@/views/lc/TopicDetail.vue";
 import IndexVue from "@/views/Index.vue";
 import PlatformManage from "@/views/lc/PlatformManage.vue";
+import LoginVue from "@/views/Login.vue";
+import UserInfoVue from "@/views/user/UserInfo.vue"
+import UserAvatarVue from "@/views/user/UserAvatar.vue";
+import UserResetPasswordVue from "@/views/user/UserResetPassword.vue";
 
 
 //定义路由关系
 const routes = [
+    { path: '/login', component: LoginVue },
     {
         path: '/', component: LayoutVue, children: [
             { path: '', component: IndexVue },
@@ -21,8 +26,11 @@ const routes = [
             { path: '/topic', component: TopicManageVue},
             { path: '/question/:platformId', component: QuestionManageVue ,props: true},
             { path: '/contest/:platformId', component: WeeklyContestVue,props: true },
-            { path: '/topic/detail/:topicId', component: TopicDetailVue,props:true },
+            { path: '/topic/detail/:topicId/:topicName', component: TopicDetailVue,props:true },
             { path: '/platform', component: PlatformManage},
+            { path: '/user/info', component: UserInfoVue },
+            { path: '/user/avatar', component: UserAvatarVue },
+            { path: '/user/resetPassword', component: UserResetPasswordVue }
         ]
     }
 ]

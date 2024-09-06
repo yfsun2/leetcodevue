@@ -5,6 +5,11 @@ import { questionPageService,addQuestionService,deleteQuestionService,updateQues
 import { typeListService} from '@/api/type.js'
 import {ElMessage,ElMessageBox} from 'element-plus'
 
+import useUserInfoStore from '@/stores/userInfo.js'
+const userInfoStore = useUserInfoStore();
+
+const userInfo = ref({...userInfoStore.info})
+
 
 const props=defineProps(['platformId'])
 
@@ -14,7 +19,10 @@ watch(() => props.platformId, (newValue, oldValue) => {
 });
 
 //模糊查询搜索词
-const search =ref('')
+const search =ref({
+    name:'',
+    typeId:null
+})
 //问题列表
 const questionList=ref([])
 //类型
@@ -65,7 +73,6 @@ const showDialog = (row) => {
     questionModel.value.stateName = row.stateName;
     //扩展id属性,将来需要传递给后台,完成分类的修改
     questionModel.value.id = row.id
-    debugger
 }
 
 //问题展示模型
@@ -82,13 +89,15 @@ const questionModel = ref({
     stateName:""
 })
 
+
 //查询
-const onSearch = async(val) => {
+const onSearch = async() => {
     let params = {
         current: pageNum.value,
         size: pageSize.value,
-        search: search.value ? search.value : val,
-        platformId:props.platformId
+        search: search.value.name ,
+        typeId:search.value.typeId,
+        platformId:props.platformId,
     }
 
     await questionPageService(params).then((result)=>{
@@ -154,7 +163,7 @@ const updateQuestion = async () => {
         difficultyScore:questionModel.value.difficultyScore,
         state:questionModel.value.stateId
     }
-    debugger
+
     //调用接口
     await updateQuestionService(params).then((result)=>{
         ElMessage.success(result.msg ? result.msg : '修改成功')
@@ -224,18 +233,37 @@ const mySort=(a,b)=>{
             <div class="header">
                 <span>问题管理</span>
                 <div class="extra">
-                    <el-button type="primary" @click="visibleDrawer = true;title = '添加问题';clearData();isDisable=false">添加问题</el-button>
+                    <el-button type="primary" @click="visibleDrawer = true;title = '添加问题';clearData();isDisable=false" :disabled="userInfo.power==='USER'">添加问题</el-button>
                 </div>
             </div>
         </template>
         <!-- 搜索表单 -->
         <el-form inline>
             <el-form-item label="名称：">
-                <el-input  placeholder="名称" v-model="search" @input="onSearch" />
+                <el-input  placeholder="名称" v-model="search.name" @input="onSearch" />
+            </el-form-item>
+            <el-form-item label="类型名称">
+                <el-select
+                    v-model="search.typeId"
+                    filterable
+                    remote
+                    reserve-keyword
+                    placeholder="请输入类型名"
+                    remote-show-suffix
+                    :remote-method="queryAllType"
+                    :loading="loading"
+                    style="width: 240px">
+                    <el-option
+                        v-for="item in allTypeList"
+                        :key="item.value"
+                        :label="item.label"
+                        :value="item.value">
+                    </el-option>
+                </el-select>
             </el-form-item>
             <el-form-item>
                 <el-button type="primary" @click="onSearch">搜索</el-button>
-                <el-button @click="search = '';">重置</el-button>
+                <el-button @click="search.name = '';search.typeId=null">重置</el-button>
             </el-form-item>
         </el-form>
         <!-- 问题列表 -->
@@ -294,8 +322,8 @@ const mySort=(a,b)=>{
             <el-table-column label="上次修改时间" prop="updateTime"> </el-table-column>
             <el-table-column fixed="right" label="操作" width="100">
                 <template #default="{ row }">
-                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row);isDisable=true"></el-button>
-                    <el-button :icon="Delete" circle plain type="danger" @click="deleteQuestion(row)"></el-button>
+                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row);isDisable=true" :disabled="userInfo.power==='USER'"></el-button>
+                    <el-button :icon="Delete" circle plain type="danger" @click="deleteQuestion(row)" :disabled="userInfo.power==='USER'"></el-button>
                 </template>
             </el-table-column>
             <!--无数据展示-->

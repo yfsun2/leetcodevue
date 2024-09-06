@@ -7,6 +7,11 @@ import {questionListService} from "@/api/question.js";
 import QuestionItem from "@/components/QuestionItem.vue";
 import {queryByIdService} from "@/api/platform.js";
 
+import useUserInfoStore from '@/stores/userInfo.js'
+const userInfoStore = useUserInfoStore();
+
+const userInfo = ref({...userInfoStore.info})
+
 const props=defineProps(['platformId'])
 
 watch(() => props.platformId, (newValue, oldValue) => {
@@ -81,19 +86,17 @@ const queryCount=async ()=>{
 queryCount()
 
 //模糊查询所有竞赛
-const onSearch = async(val) => {
+const onSearch = async() => {
     let params = {
         current: pageNum.value,
         size: pageSize.value,
-        search: search.value ? search.value : val,
+        search: search.value ,
         platformId:props.platformId
     }
     let result = await contestPageService(params);
     //渲染视图
     total.value = result.data.total;
     contestList.value = result.data.records;
-
-    debugger
 }
 
 onSearch();
@@ -225,7 +228,7 @@ const tableCellClassName=({rowIndex,columnIndex,row})=>{
             <div class="header">
                 <span>周赛管理</span>
                 <div class="extra">
-                    <el-button type="primary" @click="visibleDrawer = true;title = '添加周赛';clearData();isDisable=false">添加周赛</el-button>
+                    <el-button type="primary" @click="visibleDrawer = true;title = '添加周赛';clearData();isDisable=false" :disabled="userInfo.power==='USER'">添加周赛</el-button>
                 </div>
             </div>
         </template>
@@ -276,8 +279,8 @@ const tableCellClassName=({rowIndex,columnIndex,row})=>{
             <el-table-column label="开始时间" prop="startTime" align="center" sortable></el-table-column>
             <el-table-column  label="操作" width="150" align="center">
                 <template #default="{ row }">
-                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row);isDisable=true"></el-button>
-                    <el-button :icon="Delete" circle plain type="danger" @click="deleteContest(row)"></el-button>
+                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row);isDisable=true" :disabled="userInfo.power==='USER'"></el-button>
+                    <el-button :icon="Delete" circle plain type="danger" @click="deleteContest(row)" :disabled="userInfo.power==='USER'"></el-button>
                 </template>
             </el-table-column>
             <template #empty>

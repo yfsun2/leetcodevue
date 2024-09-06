@@ -4,6 +4,11 @@ import {ref} from 'vue'
 import { typePageService,addTypeService ,deleteTypeService,updateTypeService} from '@/api/type.js'
 import {ElMessage,ElMessageBox} from 'element-plus'
 
+import useUserInfoStore from '@/stores/userInfo.js'
+const userInfoStore = useUserInfoStore();
+
+const userInfo = ref({...userInfoStore.info})
+
 //模糊查询词
 const search =ref('')
 
@@ -49,16 +54,18 @@ const typeModel = ref({
 
 //模糊查询
 const onSearch = async(val) => {
-  let params = {
-    current: pageNum.value,
-    size: pageSize.value,
-      search: search.value ? search.value : val,
-  }
-  let result = await typePageService(params);
-
-  //渲染视图
-  total.value = result.data.total;
-  typeList.value = result.data.records;
+    let params = {
+        current: pageNum.value,
+        size: pageSize.value,
+        search: search.value ? search.value : val,
+    }
+    await typePageService(params).then(result=>{
+        //渲染视图
+        total.value = result.data.total;
+        typeList.value = result.data.records;
+    }).catch(err=>{
+        console.log(err)
+    })
 }
 
 onSearch();
@@ -128,7 +135,7 @@ const deleteCategory = (row) => {
             <div class="header">
                 <span>类型管理</span>
                 <div class="extra">
-                    <el-button type="primary" @click="dialogVisible = true;title = '添加类型';clearData()">添加类型</el-button>
+                    <el-button type="primary" @click="dialogVisible = true;title = '添加类型';clearData()" :disabled="userInfo.power==='USER'">添加类型</el-button>
                 </div>
             </div>
         </template>
@@ -144,13 +151,13 @@ const deleteCategory = (row) => {
         </el-form>
         <!-- 类型列表 -->
         <el-table :data="typeList" style="width: 100%">
-            <el-table-column label="类型ID" prop="id"></el-table-column>
-            <el-table-column label="类型名称" prop="name"></el-table-column>
-            <el-table-column label="上次修改时间" prop="updateTime"> </el-table-column>
+<!--            <el-table-column label="类型ID" prop="id"></el-table-column>-->
+            <el-table-column label="类型名称" prop="name" align="center"></el-table-column>
+            <el-table-column label="上次修改时间" prop="updateTime" align="center"> </el-table-column>
             <el-table-column label="操作" width="100">
                 <template #default="{ row }">
-                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row)"></el-button>
-                    <el-button :icon="Delete" circle plain type="danger" @click="deleteCategory(row)"></el-button>
+                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row)" :disabled="userInfo.power==='USER'"></el-button>
+                    <el-button :icon="Delete" circle plain type="danger" @click="deleteCategory(row)" :disabled="userInfo.power==='USER'"></el-button>
                 </template>
             </el-table-column>
             <template #empty>

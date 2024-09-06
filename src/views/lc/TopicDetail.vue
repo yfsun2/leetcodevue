@@ -1,7 +1,7 @@
 <script lang="js" setup>
 import {typeListService} from "@/api/type.js";
 
-const props=defineProps(['topicId'])
+const props=defineProps(['topicId','topicName'])
 
 import {getTypeListByTopicService,getQuestionPageByTopicAndTypeService,addTopicQuestionService,updateTopicQuestionService,deleteTopicQuestionService} from "@/api/topic_question.js";
 import {updateQuestionState} from "@/api/question.js";
@@ -9,6 +9,12 @@ import { ref } from 'vue'
 import {questionListService} from "@/api/question.js";
 import {ElMessage,ElMessageBox} from "element-plus";
 import {CircleCheckFilled, Clock, Delete, Edit} from "@element-plus/icons-vue";
+import {topicListService} from "@/api/topic.js";
+
+import useUserInfoStore from '@/stores/userInfo.js'
+const userInfoStore = useUserInfoStore();
+
+const userInfo = ref({...userInfoStore.info})
 
 //类型列表
 const typeList=ref([])
@@ -22,6 +28,7 @@ const activeId=ref('')
 
 const topicQuestionModel=ref({
     id:0,
+    topicName:props.topicName,
     question:{id:0,value:0,stateId:0},
     questionName:'',
     topicType:{value:0,},
@@ -63,13 +70,36 @@ const clearData=()=>{
 //加载
 const loading=ref(false)
 
+//要展示的table里的
+const questionList=ref([])
+
 //问题列表
 const allQuestionList=ref([])
 
-//要展示的table里的
-const questionList=ref([])
+//题单列表
+const allTopicList=ref([])
+
 //类型
 const allTypeList=ref([])
+
+const queryAllTopic=async(query)=>{
+    if(query){
+        loading.value=true
+        let params={
+            search:query
+        }
+        await topicListService(params).then(result=>{
+            setTimeout(() => {
+                loading.value = false
+                allTopicList.value = result.data.map((item) => {
+                    return { value:item.id, label:item.name}
+                })
+            }, 200)
+        })
+    }else{
+        allTopicList.value=[]
+    }
+}
 
 const queryAllType=async (query)=>{
     if(query){
@@ -123,7 +153,7 @@ const addShip=async ()=>{
 }
 
 const updateShip=async ()=>{
-    debugger
+
     let params={
         id:topicQuestionModel.value.id,
         topicId:parseInt(props.topicId),
@@ -203,8 +233,8 @@ const handleChange = async (val) => {
     let params = {
         current: pageNum.value,
         size: pageSize.value,
-        topicId:parseInt(props.topicId),
-        typeId:parseInt(val)
+        topicId:props.topicId,
+        typeId:val
     }
 
     await getQuestionPageByTopicAndTypeService(params).then((result)=>{
@@ -226,9 +256,9 @@ const filterState = (value, row, column) => {
     <el-card class="page-container">
         <template #header>
             <div class="header">
-                <span>题目管理</span>
+                <span style="font-size:20px">题单:<strong>{{props.topicName}}</strong></span>
                 <div class="extra">
-                    <el-button type="primary" @click="visibleDrawer = true;title = '添加题目';clearData();isDisable=false;">添加题目</el-button>
+                    <el-button type="primary" @click="visibleDrawer = true;title = '添加题目';clearData();isDisable=false;" :disabled="userInfo.power==='USER'">添加题目</el-button>
                 </div>
             </div>
         </template>
@@ -296,8 +326,8 @@ const filterState = (value, row, column) => {
                         <el-table-column label="上次修改时间" prop="updateTime"> </el-table-column>
                         <el-table-column fixed="right" label="操作" width="100">
                             <template #default="{ row }">
-                                <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row);isDisable=true;"></el-button>
-                                <el-button :icon="Delete" circle plain type="danger" @click="deleteShip(row)"></el-button>
+                                <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row);isDisable=true;" :disabled="userInfo.power==='USER'"></el-button>
+                                <el-button :icon="Delete" circle plain type="danger" @click="deleteShip(row)" :disabled="userInfo.power==='USER'"></el-button>
                             </template>
                         </el-table-column>
                         <template #empty>
@@ -340,6 +370,26 @@ const filterState = (value, row, column) => {
                         </el-option>
                     </el-select>
                 </el-form-item>
+                <el-form-item label="属于题单">
+                    <el-select
+                        :disabled="!isDisable"
+                        v-model="topicQuestionModel.topicName"
+                        filterable
+                        remote
+                        reserve-keyword
+                        placeholder="请输入题单名"
+                        remote-show-suffix
+                        :remote-method="queryAllTopic"
+                        :loading="loading"
+                        style="width: 240px">
+                        <el-option
+                            v-for="item in allTopicList"
+                            :key="item.value"
+                            :label="item.label"
+                            :value="item">
+                        </el-option>
+                    </el-select>
+                </el-form-item>
                 <el-form-item label="类型">
                     <el-select
                         v-model="topicQuestionModel.topicType"
@@ -359,7 +409,7 @@ const filterState = (value, row, column) => {
                         </el-option>
                     </el-select>
                 </el-form-item>
-                <el-form-item label="题目状态">
+                <el-form-item v-show="isDisable" label="题目状态">
                     <el-radio-group v-model="topicQuestionModel.question.stateId">
                         <el-radio  :label="0" >未开始</el-radio>
                         <el-radio  :label="1" >尝试中</el-radio>

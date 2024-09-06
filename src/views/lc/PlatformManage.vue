@@ -4,6 +4,11 @@ import {ref} from 'vue'
 import { platformListService,addPlatformService ,deletePlatformService,updatePlatformService} from '@/api/platform.js'
 import {ElMessage,ElMessageBox} from 'element-plus'
 
+import useUserInfoStore from '@/stores/userInfo.js'
+const userInfoStore = useUserInfoStore();
+
+const userInfo = ref({...userInfoStore.info})
+
 //模糊查询词
 const search =ref('')
 
@@ -39,10 +44,12 @@ const onSearch = async(val) => {
     let params = {
         search: search.value ? search.value : val,
     }
-    let result = await platformListService(params);
-
-    //渲染视图
-    platformList.value = result.data;
+    await platformListService(params).then(result=>{
+        //渲染视图
+        platformList.value = result.data;
+    }).catch(err=>{
+        console.log(err)
+    })
 }
 
 onSearch();
@@ -54,13 +61,17 @@ const onAddPlatform=async()=>{
         questionCount:platformModel.value.questionCount,
     }
 
-    let result= await addPlatformService(params)
-    ElMessage.success(result.msg? result.msg:'添加成功');
+   await addPlatformService(params).then(result=>{
+       ElMessage.success(result.msg? result.msg:'添加成功');
 
-    dialogVisible.value = false;
+       dialogVisible.value = false;
 
-    //刷新当前列表
-    await onSearch()
+       //刷新当前列表
+        onSearch()
+   }).catch(err=>{
+       console.log(err)
+   })
+
 }
 
 //编辑分类
@@ -72,15 +83,17 @@ const updatePlatform = async () => {
         questionCount:platformModel.value.questionCount,
     }
     //调用接口
-    let result = await updatePlatformService(params);
+    await updatePlatformService(params).then(result=>{
+        ElMessage.success(result.msg ? result.msg : '修改成功')
 
-    ElMessage.success(result.msg ? result.msg : '修改成功')
+        //调用获取所有分类的函数
+         onSearch()
 
-    //调用获取所有分类的函数
-    await onSearch()
-
-    //隐藏弹窗
-    dialogVisible.value = false;
+        //隐藏弹窗
+        dialogVisible.value = false;
+    }).catch(err=>{
+        console.log(err)
+    })
 }
 
 //清空模型的数据
@@ -120,7 +133,7 @@ const deletePlatform = (row) => {
             <div class="header">
                 <span>平台管理</span>
                 <div class="extra">
-                    <el-button type="primary" @click="dialogVisible = true;title = '添加平台';clearData()">添加平台</el-button>
+                    <el-button type="primary" @click="dialogVisible = true;title = '添加平台';clearData()" :disabled="userInfo.power==='USER'">添加平台</el-button>
                 </div>
             </div>
         </template>
@@ -136,14 +149,14 @@ const deletePlatform = (row) => {
         </el-form>
         <!-- 类型列表 -->
         <el-table :data="platformList" style="width: 100%">
-            <el-table-column label="平台ID" prop="id"></el-table-column>
-            <el-table-column label="平台名称" prop="name"></el-table-column>
-            <el-table-column label="竞赛题目数" prop="questionCount"></el-table-column>
-            <el-table-column label="上次修改时间" prop="updateTime"> </el-table-column>
+<!--            <el-table-column label="平台ID" prop="id"></el-table-column>-->
+            <el-table-column label="平台名称" prop="name" align="center"></el-table-column>
+            <el-table-column label="竞赛题目数" prop="questionCount" align="center"></el-table-column>
+            <el-table-column label="上次修改时间" prop="updateTime" align="center"> </el-table-column>
             <el-table-column label="操作" width="100">
                 <template #default="{ row }">
-                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row)"></el-button>
-                    <el-button :icon="Delete" circle plain type="danger" @click="deletePlatform(row)"></el-button>
+                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row)" :disabled="userInfo.power==='USER'"></el-button>
+                    <el-button :icon="Delete" circle plain type="danger" @click="deletePlatform(row)" :disabled="userInfo.power==='USER'"></el-button>
                 </template>
             </el-table-column>
             <template #empty>

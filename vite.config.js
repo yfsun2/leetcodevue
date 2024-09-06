@@ -7,9 +7,10 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   // base: process.env.NODE_ENV === 'production'?"/leetcodevue/":"/",
   // base:'/leetcodevue/',
-  // build:{
-  //   outDir:"E:\\IdeaProjects\\SpringBootStudy\\LeetcodeServer\\src\\main\\resources\\static"
-  // },
+  build:{
+    emptyOutDir:true,
+    outDir:"E:\\IdeaProjects\\SpringBootStudy\\LeetcodeServer\\src\\main\\docker\\data\\nginx\\html"
+  },
   plugins: [
     vue(),
   ],
@@ -21,8 +22,7 @@ export default defineConfig({
   server:{
     proxy:{
       '/api':{//获取路径中包含了/api的请求
-        // target:'http://syfblog.w1.luyouxia.net/',//后台服务所在的源
-        target:'http://localhost:8082/',//后台服务所在的源
+        target:process.env.NODE_ENV === 'production'?'http://172.30.62.63:8083/':'http://localhost:8082/',//后台服务所在的源
         changeOrigin:true,//修改源
         rewrite:(path)=>path.replace(/^\/api/,'')///api替换为''
       }
