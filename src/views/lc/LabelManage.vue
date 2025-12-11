@@ -1,7 +1,7 @@
 <script setup>
 import {Edit, Delete} from '@element-plus/icons-vue'
-import {ref} from 'vue'
-import { typePageService,addTypeService ,deleteTypeService,updateTypeService} from '@/api/type.js'
+import {onMounted, ref} from 'vue'
+import { labelPageService,addLabelService ,deleteLabelService,updateLabelService} from '@/api/label.js'
 import {ElMessage,ElMessageBox} from 'element-plus'
 
 import useUserInfoStore from '@/stores/userInfo.js'
@@ -13,12 +13,12 @@ const userInfo = ref({...userInfoStore.info})
 const search =ref('')
 
 //table要用的列表
-const typeList=ref([])
+const labelList=ref([])
 
 //分页条数据模型
 const pageNum = ref(1)//当前页
 const total = ref(0)//总条数
-const pageSize = ref(5)//每页条数
+const pageSize = ref(20)//每页条数
 
 //当每页条数发生了变化，调用此函数
 const onSizeChange = (size) => {
@@ -42,14 +42,17 @@ const showDialog = (row) => {
     dialogVisible.value = true;
     title.value = '编辑类型'
     //数据拷贝
-    typeModel.value.name = row.name;
+    labelModel.value.name = row.name;
+    labelModel.value.type = row.type;
     //扩展id属性,将来需要传递给后台,完成分类的修改
-    typeModel.value.id = row.id
+    labelModel.value.id = row.id
 }
 
 //表单模型
-const typeModel = ref({
-    name: ''
+const labelModel = ref({
+    id:0,
+    name: '',
+    type:''
 })
 
 //模糊查询
@@ -59,36 +62,33 @@ const onSearch = async(val) => {
         size: pageSize.value,
         search: search.value ? search.value : val,
     }
-    await typePageService(params).then(result=>{
+    await labelPageService(params).then(result=>{
         //渲染视图
         total.value = result.data.total;
-        typeList.value = result.data.records;
+        labelList.value = result.data.records;
     }).catch(err=>{
         console.log(err)
     })
 }
 
-onSearch();
+onMounted(()=>{
+    onSearch()
+})
 
+const onAddLabel=async()=>{
+    let result= await addLabelService(labelModel.value)
+    ElMessage.success(result.msg? result.msg:'添加成功');
 
-const onAddType=async()=>{
-  let params = {
-    name:typeModel.value.name
-  }
+    dialogVisible.value = false;
 
-  let result= await addTypeService(params)
-  ElMessage.success(result.msg? result.msg:'添加成功');
-
-  dialogVisible.value = false;
-
-  //刷新当前列表
-  await onSearch()
+    //刷新当前列表
+    await onSearch()
 }
 
 //编辑分类
-const updateCategory = async () => {
+const updateLabel = async () => {
   //调用接口
-  let result = await updateTypeService(typeModel.value);
+  let result = await updateLabelService(labelModel.value);
 
   ElMessage.success(result.msg ? result.msg : '修改成功')
 
@@ -101,14 +101,15 @@ const updateCategory = async () => {
 
 //清空模型的数据
 const clearData = () => {
-  typeModel.value.name = '';
+  labelModel.value.name = '';
+  labelModel.value.type='';
 }
 
 //删除分类
-const deleteCategory = (row) => {
+const deleteLabel = (row) => {
     //提示用户  确认框
     ElMessageBox.confirm(
-        '你确认要删除该类型吗?',
+        '你确认要删除该标签吗?',
         '温馨提示',
         {
             confirmButtonText: '确认',
@@ -117,7 +118,7 @@ const deleteCategory = (row) => {
         }
     ).then(async () => {
         //调用接口
-        await deleteTypeService(row.id).then(result=>{
+        await deleteLabelService(row.id).then(result=>{
             ElMessage.success('删除成功');
             //刷新列表
             onSearch();
@@ -133,31 +134,32 @@ const deleteCategory = (row) => {
     <el-card class="page-container">
         <template #header>
             <div class="header">
-                <span>类型管理</span>
-                <div class="extra">
-                    <el-button type="primary" @click="dialogVisible = true;title = '添加类型';clearData()" :disabled="userInfo.power==='USER'">添加类型</el-button>
+                <span>标签管理</span>
+                <!-- 搜索表单 -->
+                <el-form inline style="max-height: 28px">
+                    <el-form-item label="名称：">
+                        <el-input  placeholder="名称" v-model="search" @input="onSearch"/>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" @click="onSearch">搜索</el-button>
+                        <el-button @click="search = '';">重置</el-button>
+                    </el-form-item>
+                </el-form>
+                <div class="extra" >
+                    <el-button type="primary" @click="dialogVisible = true;title = '添加标签';clearData()" >添加标签</el-button>
                 </div>
             </div>
         </template>
-        <!-- 搜索表单 -->
-        <el-form inline>
-            <el-form-item label="名称：">
-                <el-input  placeholder="名称" v-model="search" @input="onSearch"/>
-            </el-form-item>
-            <el-form-item>
-                <el-button type="primary" @click="onSearch">搜索</el-button>
-                <el-button @click="search = '';">重置</el-button>
-            </el-form-item>
-        </el-form>
+
         <!-- 类型列表 -->
-        <el-table :data="typeList" style="width: 100%">
-<!--            <el-table-column label="类型ID" prop="id"></el-table-column>-->
-            <el-table-column label="类型名称" prop="name" align="center"></el-table-column>
+        <el-table :data="labelList" max-height="380" style="width: 100%">
+            <el-table-column label="标签名称" prop="name" align="center"></el-table-column>
+            <el-table-column label="标签类型" prop="type" align="center"></el-table-column>
             <el-table-column label="上次修改时间" prop="updateTime" align="center"> </el-table-column>
-            <el-table-column label="操作" width="100">
+            <el-table-column label="操作" width="100" >
                 <template #default="{ row }">
-                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row)" :disabled="userInfo.power==='USER'"></el-button>
-                    <el-button :icon="Delete" circle plain type="danger" @click="deleteCategory(row)" :disabled="userInfo.power==='USER'"></el-button>
+                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row)" ></el-button>
+                    <el-button :icon="Delete" circle plain type="danger" @click="deleteLabel(row)" ></el-button>
                 </template>
             </el-table-column>
             <template #empty>
@@ -165,34 +167,27 @@ const deleteCategory = (row) => {
             </template>
         </el-table>
         <!-- 分页条 -->
-        <el-pagination v-model:current-page="pageNum" v-model:page-size="pageSize" :page-sizes="[3, 5, 10, 15]"
+        <el-pagination v-model:current-page="pageNum" v-model:page-size="pageSize" :page-sizes="[10,20,50]"
                    layout="jumper, total, sizes, prev, pager, next" background :total="total" @size-change="onSizeChange"
                    @current-change="onCurrentChange" style="margin-top: 20px; justify-content: flex-end" />
 
-        <!--    &lt;!&ndash; 抽屉 &ndash;&gt;-->
-        <!--    <el-drawer v-model="visibleDrawer" title="添加类型" direction="rtl" size="50%">-->
-        <!--      &lt;!&ndash; 添加文章表单 &ndash;&gt;-->
-        <!--      <el-form :model="typeModel" label-width="100px">-->
-        <!--        <el-form-item label="类型名称">-->
-        <!--          <el-input v-model="typeModel.name" placeholder="请输入名称"></el-input>-->
-        <!--        </el-form-item>-->
-        <!--        <el-form-item>-->
-        <!--          <el-button type="primary" @click="onAddType()">添加</el-button>-->
-        <!--        </el-form-item>-->
-        <!--      </el-form>-->
-        <!--    </el-drawer>-->
-
         <!-- 添加分类弹窗 -->
         <el-dialog v-model="dialogVisible" :title="title" width="30%">
-            <el-form :model="typeModel"  label-width="100px" style="padding-right: 30px">
+            <el-form :model="labelModel"  label-width="100px" style="padding-right: 30px">
                 <el-form-item label="类型名称" prop="name">
-                    <el-input v-model="typeModel.name" minlength="1"></el-input>
+                    <el-input v-model="labelModel.name" minlength="1"></el-input>
+                </el-form-item>
+                <el-form-item label="标签类型" >
+                    <el-select v-model="labelModel.type">
+                        <el-option label="问题" value="问题"/>
+                        <el-option label="题单" value="题单"/>
+                    </el-select>
                 </el-form-item>
             </el-form>
             <template #footer>
                     <span class="dialog-footer">
                         <el-button @click="dialogVisible = false">取消</el-button>
-                        <el-button type="primary" @click="title === '添加类型' ? onAddType() : updateCategory()"> 确认 </el-button>
+                        <el-button type="primary" @click="title === '添加标签' ? onAddLabel() : updateLabel()"> 确认 </el-button>
                     </span>
             </template>
         </el-dialog>

@@ -23,9 +23,9 @@ export const userInfoService = ()=>{
     return request.get('/user/userinfo')
 }
 
-//修改个人信息
+//修改个人信息邮箱
 export const userInfoUpdateService = (userInfoData)=>{
-   return request.put('/user/update',userInfoData)
+   return request.put('/user/updateEmail',userInfoData)
 }
 
 //修改头像
@@ -34,4 +34,21 @@ export const userAvatarUpdateService = (avatarUrl)=>{
        avatarUrl:avatarUrl
     }
     return request.get('/user/updateAvatar',{params:params})
+}
+
+export const updatePasswordService=(oldPassword,password)=>{
+    let params={
+        oldPassword:oldPassword,
+        password:password
+    }
+    return request.get('/user/updatePassword',{params:params})
+}
+
+export const updateUserInfoService=(params)=>{
+    return request.post('/user/update',params)
+}
+
+
+export const listUserService=(params)=>{
+    return request.get('/user/list',{params:params})
 }

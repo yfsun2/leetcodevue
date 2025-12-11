@@ -9,6 +9,10 @@ const tokenStore = useTokenStore();
 import useUserInfoStore from '@/stores/userInfo.js'
 const userInfoStore = useUserInfoStore();
 
+
+import {userAvatarUpdateService} from '@/api/user.js'
+import {ElMessage} from 'element-plus'
+
 const userInfo = ref({...userInfoStore.info})
 
 //用户头像地址
@@ -16,13 +20,11 @@ const imgUrl= ref(userInfoStore.info.url)
 
 //图片上传成功的回调函数
 const uploadSuccess = (result)=>{
-    imgUrl.value = result.data;
+    imgUrl.value = result.data.fileUrl;
 }
 
 
 
-import {userAvatarUpdateService} from '@/api/user.js'
-import {ElMessage} from 'element-plus'
 //头像修改
 const updateAvatar = async ()=>{
     //调用接口

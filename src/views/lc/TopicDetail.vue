@@ -1,37 +1,48 @@
 <script lang="js" setup>
-import {typeListService} from "@/api/type.js";
 
+//url传进来题单Id，题单名称
 const props=defineProps(['topicId','topicName'])
-
-import {getTypeListByTopicService,getQuestionPageByTopicAndTypeService,addTopicQuestionService,updateTopicQuestionService,deleteTopicQuestionService} from "@/api/topic_question.js";
-import {updateQuestionState} from "@/api/question.js";
-import { ref } from 'vue'
-import {questionListService} from "@/api/question.js";
-import {ElMessage,ElMessageBox} from "element-plus";
-import {CircleCheckFilled, Clock, Delete, Edit} from "@element-plus/icons-vue";
+//标签管理api
+import {labelListService} from "@/api/label.js";
+//题单问题管理api
+import {getLabelsListByTopicService,getQuestionPageByTopicAndTypeService,addTopicQuestionService,addListTopicQuestionService,updateTopicQuestionService,deleteTopicQuestionService} from "@/api/topic_question.js";
+//问题管理api
+import {questionListService,updateQuestionState} from "@/api/question.js";
+//题单管理api
 import {topicListService} from "@/api/topic.js";
 
+import {onMounted, ref} from 'vue'
+import {ElMessage,ElMessageBox} from "element-plus";
+import {ArrowRight, CircleCheckFilled, Clock, Delete, Edit} from "@element-plus/icons-vue";
 import useUserInfoStore from '@/stores/userInfo.js'
+
+const levelName=["简单","中等","困难"]
+
+//获取用户信息存储
 const userInfoStore = useUserInfoStore();
-
+//获取用户信息
 const userInfo = ref({...userInfoStore.info})
-
-//类型列表
-const typeList=ref([])
-
+//题单标签列表
+const topicLabelList=ref([])
+//抽屉标题
 const title = ref("")
+//抽屉是否可见
 const visibleDrawer=ref(false)
-
+//按钮是否被禁用
 const isDisable=ref(false)
-
+//题目是否多选
+const isMultiple=ref(false)
+//被激活的题单类型Id
 const activeId=ref('')
-
+//题单问题数据模型
 const topicQuestionModel=ref({
     id:0,
     topicName:props.topicName,
-    question:{id:0,value:0,stateId:0},
+    question:{id:0,value:0,state:0},
     questionName:'',
-    topicType:{value:0,},
+    questionIdList:[],
+    questionNameList:[],
+    topicType:{value:"",label:""},
     topicTypeName:'',
 })
 
@@ -48,40 +59,49 @@ const onSizeChange = (size) => {
 //当前页码发生变化，调用此函数
 const onCurrentChange = (num) => {
     pageNum.value = num;
-    getType();
+    getLabels();
     handleChange(activeId.value);
 }
 
-
-const getType=async ()=>{
-    await getTypeListByTopicService(props.topicId).then((result)=>{
-        typeList.value=result.data
+//获取当前题单所有类型
+const getLabels=async ()=>{
+    await getLabelsListByTopicService(props.topicId).then((result)=>{
+        topicLabelList.value=result.data
+        debugger
+    }).catch(err=>{
+        console.log(err)
     })
 }
-getType()
 
+onMounted(()=>{
+    getLabels();
+})
+
+//清理数据
 const clearData=()=>{
     // topicQuestionModel.value.topicType={};
     // topicQuestionModel.value.topicTypeName='';
     topicQuestionModel.value.question={};
+    topicQuestionModel.value.questionIdList=[];
     topicQuestionModel.value.questionName='';
 }
 
 //加载
 const loading=ref(false)
 
-//要展示的table里的
+//要展示的table里的问题列表
 const questionList=ref([])
 
-//问题列表
+//查询出的问题列表
 const allQuestionList=ref([])
 
-//题单列表
+//查询出的题单列表
 const allTopicList=ref([])
 
-//类型
-const allTypeList=ref([])
+//标签列表
+const allLabelList=ref([])
 
+//根据名称模糊查询所有题单
 const queryAllTopic=async(query)=>{
     if(query){
         loading.value=true
@@ -89,37 +109,34 @@ const queryAllTopic=async(query)=>{
             search:query
         }
         await topicListService(params).then(result=>{
-            setTimeout(() => {
-                loading.value = false
-                allTopicList.value = result.data.map((item) => {
-                    return { value:item.id, label:item.name}
-                })
-            }, 200)
+            loading.value = false
+            allTopicList.value = result.data.map((item) => {
+                return { value:item.id, label:item.name}
+            })
         })
     }else{
         allTopicList.value=[]
     }
 }
-
-const queryAllType=async (query)=>{
+//根据名称模糊查询所有题单标签
+const queryAllLabel=async (query)=>{
     if(query){
         loading.value = true
         let params = {
-            search: query
+            search: query,
+            type:"题单"
         }
-        await typeListService(params).then((result)=>{
-            setTimeout(() => {
-                loading.value = false
-                allTypeList.value = result.data.map((item) => {
-                    return { value:item.id, label:item.name}
-                })
-            }, 200)
+        await labelListService(params).then((result)=>{
+            loading.value = false
+            allLabelList.value = result.data.map((item) => {
+                return { value:item.id, label:item.name}
+            })
         })
     }else{
-        allTypeList.value=[]
+        allLabelList.value=[]
     }
 }
-
+//根据名称模糊查询所有问题
 const queryAllQuestion=async (query)=>{
     if(query){
         loading.value = true
@@ -127,48 +144,65 @@ const queryAllQuestion=async (query)=>{
             search: query
         }
         await questionListService(params).then((result)=>{
-            setTimeout(() => {
-                loading.value = false
-                allQuestionList.value = result.data.map((item) => {
-                    return { value:item.questionId, label:item.name,id:item.id,stateId:item.stateId}
-                })
-            }, 200)
+            loading.value = false
+            allQuestionList.value = result.data.map((item) => {
+                return { value:item.questionId, label:item.name,id:item.id,state:item.state}
+            })
         })
     }else{
         allQuestionList.value=[]
     }
 }
-
+//将问题添加到题单
 const addShip=async ()=>{
-    let params={
-        topicId:parseInt(props.topicId),
-        questionId:topicQuestionModel.value.question.id,
-        typeId:topicQuestionModel.value.topicType.value
+    //批量插入
+    if(isMultiple.value){
+        let params=[]
+        for(let i=0;i<topicQuestionModel.value.questionIdList.length;i++){
+            params.push({topicId:props.topicId,questionId:topicQuestionModel.value.questionIdList[i].id,labelId:topicQuestionModel.value.topicType.value})
+        }
+        await addListTopicQuestionService(params).then(result=>{
+            ElMessage.success(result.msg? result.msg:'添加成功');
+            visibleDrawer.value=false;
+            getLabels();
+        }).catch(err=>{
+            console.log(err)
+            ElMessage.error('添加失败')
+        })
+    }else{//单个插入
+        let params={
+            topicId:props.topicId,
+            questionId:topicQuestionModel.value.question.id,
+            labelId:topicQuestionModel.value.topicType.value
+        }
+        await addTopicQuestionService(params).then((result)=>{
+            ElMessage.success(result.msg? result.msg:'添加成功');
+            visibleDrawer.value=false;
+            getLabels();
+        }).catch(err=>{
+            console.log(err)
+            ElMessage.error('添加失败')
+        })
     }
-    await addTopicQuestionService(params).then((result)=>{
-        ElMessage.success(result.msg? result.msg:'添加成功');
-        visibleDrawer.value=false;
-        getType();
-    })
 }
-
+//更新问题题单关系
 const updateShip=async ()=>{
-
     let params={
         id:topicQuestionModel.value.id,
-        topicId:parseInt(props.topicId),
+        topicId:props.topicId,
         questionId:topicQuestionModel.value.question.value,
-        typeId:topicQuestionModel.value.topicType.value
+        labelId:topicQuestionModel.value.topicType.value
     }
+    debugger
     await updateTopicQuestionService(params).then(()=>{
         let config={
             id:topicQuestionModel.value.question.value,
-            stateId:topicQuestionModel.value.question.stateId,
+            state:topicQuestionModel.value.question.state,
         }
         updateQuestionState(config).then(res=>{
             ElMessage.success(res.msg? res.msg:'修改成功');
             visibleDrawer.value=false;
-            getType();
+            getLabels();
             handleChange(activeId.value);
         }).catch(err=>{
             console.log(err)
@@ -190,6 +224,7 @@ const deleteShip=async (row)=>{
         }
     ).then(async () => {
         //调用接口
+        debugger
         await deleteTopicQuestionService(row.topicQuestionId).then(()=>{
             ElMessage({
                 type: 'success',
@@ -199,7 +234,7 @@ const deleteShip=async (row)=>{
             console.log(err)
         })
         //刷新列表
-        await getType();
+        await getLabels();
         await handleChange(activeId.value);
     }).catch(() => {
             ElMessage({
@@ -213,11 +248,13 @@ const deleteShip=async (row)=>{
 const showDialog = (row) => {
     visibleDrawer.value = true;
     title.value = '编辑题目';
+    debugger
     topicQuestionModel.value.topicType.value=row.topicType.id
     topicQuestionModel.value.topicType.label=row.topicType.name
+    topicQuestionModel.value.question.id=row.questionId
     topicQuestionModel.value.question.value=row.id
-    topicQuestionModel.value.question.label=row.name
-    topicQuestionModel.value.question.stateId=row.stateId
+    topicQuestionModel.value.question.label=row.questionId+"."+row.name
+    topicQuestionModel.value.question.state=row.state
     //扩展id属性,将来需要传递给后台,完成分类的修改
     topicQuestionModel.value.id = row.topicQuestionId
 }
@@ -238,6 +275,7 @@ const handleChange = async (val) => {
     }
 
     await getQuestionPageByTopicAndTypeService(params).then((result)=>{
+        console.log(result)
         total.value = result.data.total;
         questionList.value = result.data.records;
     }).catch((err)=>{
@@ -256,31 +294,34 @@ const filterState = (value, row, column) => {
     <el-card class="page-container">
         <template #header>
             <div class="header">
-                <span style="font-size:20px">题单:<strong>{{props.topicName}}</strong></span>
+                <el-breadcrumb :separator-icon="ArrowRight" style="font-size: 16px">
+                    <el-breadcrumb-item :to="{path:'/topic'}">题单管理</el-breadcrumb-item>
+                    <el-breadcrumb-item >{{props.topicName}}</el-breadcrumb-item>
+                </el-breadcrumb>
                 <div class="extra">
-                    <el-button type="primary" @click="visibleDrawer = true;title = '添加题目';clearData();isDisable=false;" :disabled="userInfo.power==='USER'">添加题目</el-button>
+                    <el-button type="primary" @click="visibleDrawer = true;title = '添加题目';clearData();isDisable=false;isMultiple=false;" >添加题目</el-button>
+                    <el-button type="primary" @click="visibleDrawer = true;title = '批量添加题目';clearData();isDisable=false;isMultiple=true;" >批量添加题目</el-button>
                 </div>
             </div>
         </template>
-        <div v-if="typeList.length>0" class="demo-collapse">
+        <div v-if="topicLabelList.length>0" class="demo-collapse">
             <el-collapse v-model="activeId" @change="handleChange" accordion>
-                <el-collapse-item v-for="(item,index) in typeList" :key=index :title="item.name" :name="item.id">
+                <el-collapse-item v-for="(item,index) in topicLabelList" :key=index :title="item.name" :name="item.id">
                     <template #title>
-                        <el-text type="primary" size="large">{{item.name}}</el-text>
+                        <el-text type="primary" size="large" >{{item.name}}</el-text>
                     </template>
                     <!-- 问题列表 -->
                     <el-table :data="questionList" max-height="342" style="width: 100%">
-                        <el-table-column label="状态" prop="stateName" width="100" align="center"
-                                         :filters="[
-                { text: '已完成', value: '已完成'},
-                { text: '未开始', value: '未开始' },
-                { text: '尝试中', value: '尝试中' },
-              ]"
-                                         :filter-method="filterState"
-                        >
+                        <el-table-column label="状态" prop="state" width="100" align="center"
+                            :filters="[
+                                { text: '已完成', value: 2 },
+                                { text: '未开始', value: 0 },
+                                { text: '尝试中', value: 1 },
+                            ]"
+                            :filter-method="filterState">
                             <template #default="scope">
-                                <el-icon v-if="scope.row.stateName==='已完成'" size="20" color="#15BD66"><CircleCheckFilled /></el-icon>
-                                <el-icon v-else-if="scope.row.stateName==='尝试中'" size="20" color="#FFB800"><Clock /></el-icon>
+                                <el-icon v-if="scope.row.state===2" size="20" color="#15BD66"><CircleCheckFilled /></el-icon>
+                                <el-icon v-else-if="scope.row.state===1" size="20" color="#FFB800"><Clock /></el-icon>
                                 <el-icon v-else size="20" ></el-icon>
                             </template>
                         </el-table-column>
@@ -297,37 +338,48 @@ const filterState = (value, row, column) => {
                             </template>
                         </el-table-column>
 
-                        <el-table-column label="类型名称" prop="typeNameList">
+                        <el-table-column label="标签" prop="topicType">
                             <template #default="scope">
-                                <el-tag v-for="item in scope.row.typeList">
+                                <el-tag v-for="item in scope.row.labelList">
                                     {{item.name}}
                                 </el-tag>
                             </template>
                         </el-table-column>
                         <el-table-column label="难易程度" prop="levelName"
                                          :filters="[
-                { text: '简单', value: '简单'},
-                { text: '中等', value: '中等' },
-                { text: '困难', value: '困难' },
+                { text: '简单', value: 0},
+                { text: '中等', value: 1 },
+                { text: '困难', value: 2 },
               ]" :filter-method="filterState"
                         >
                             <template #default="scope">
-                                <el-tag v-if="scope.row.levelName==='简单'" type="success" effect="dark">
-                                    {{scope.row.difficultyScore===0?scope.row.levelName:scope.row.difficultyScore}}
+                                <el-tag v-if="scope.row.level===0" type="success" effect="dark">
+                                    {{scope.row.difficultyScore===0?levelName[scope.row.level]:scope.row.difficultyScore}}
                                 </el-tag>
-                                <el-tag v-else-if="scope.row.levelName==='中等'" type="warning" effect="dark">
-                                    {{scope.row.difficultyScore===0?scope.row.levelName:scope.row.difficultyScore}}
+                                <el-tag v-else-if="scope.row.level===1" type="warning" effect="dark">
+                                    {{scope.row.difficultyScore===0?levelName[scope.row.level]:scope.row.difficultyScore}}
                                 </el-tag>
                                 <el-tag v-else type="danger" effect="dark">
-                                    {{scope.row.difficultyScore===0?scope.row.levelName:scope.row.difficultyScore}}
+                                    {{scope.row.difficultyScore===0?levelName[scope.row.level]:scope.row.difficultyScore}}
                                 </el-tag>
                             </template>
                         </el-table-column>
-                        <el-table-column label="上次修改时间" prop="updateTime"> </el-table-column>
+
+                        <el-table-column label="题解">
+                            <template #default="scope">
+                                <router-link :to="{path:'/solution/'+scope.row.id}">
+                                    <el-button type="primary" size="small">
+                                        {{scope.row.solutionCount}}
+                                    </el-button>
+                                </router-link>
+                            </template>
+                        </el-table-column>
+
+                        <el-table-column v-if="userInfo.power!=='USER'" label="上次修改时间" prop="updateTime"> </el-table-column>
                         <el-table-column fixed="right" label="操作" width="100">
                             <template #default="{ row }">
-                                <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row);isDisable=true;" :disabled="userInfo.power==='USER'"></el-button>
-                                <el-button :icon="Delete" circle plain type="danger" @click="deleteShip(row)" :disabled="userInfo.power==='USER'"></el-button>
+                                <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row);isDisable=true;isMultiple=false;" ></el-button>
+                                <el-button v-if="userInfo.power!=='USER'" :icon="Delete" circle plain type="danger" @click="deleteShip(row)" ></el-button>
                             </template>
                         </el-table-column>
                         <template #empty>
@@ -350,26 +402,52 @@ const filterState = (value, row, column) => {
         <el-drawer v-model="visibleDrawer" :title="title" direction="rtl" size="50%">
             <!-- 添加问题表单 -->
             <el-form :model="topicQuestionModel" label-width="100px">
-                <el-form-item label="问题" >
-                    <el-select
-                        :disabled="isDisable"
-                        v-model="topicQuestionModel.question"
-                        filterable
-                        remote
-                        reserve-keyword
-                        placeholder="请输入题目名"
-                        remote-show-suffix
-                        :remote-method="queryAllQuestion"
-                        :loading="loading"
-                        style="width: 240px">
-                        <el-option
-                            v-for="item in allQuestionList"
-                            :key="item.value"
-                            :label="item.value+'.'+item.label"
-                            :value="item">
-                        </el-option>
-                    </el-select>
-                </el-form-item>
+                <div v-if="isMultiple">
+                    <el-form-item label="问题列表" >
+                        <el-select
+                            :disabled="isDisable"
+                            v-model="topicQuestionModel.questionIdList"
+                            multiple
+                            filterable
+                            remote
+                            reserve-keyword
+                            placeholder="请输入题目"
+                            remote-show-suffix
+                            :remote-method="queryAllQuestion"
+                            :loading="loading"
+                            style="width: 240px">
+                            <el-option
+                                v-for="item in allQuestionList"
+                                :key="item.value"
+                                :label="item.value+'.'+item.label"
+                                :value="item">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </div>
+                <div v-else>
+                    <el-form-item label="问题" >
+                        <el-select
+                            :disabled="isDisable"
+                            v-model="topicQuestionModel.question"
+                            filterable
+                            remote
+                            reserve-keyword
+                            placeholder="请输入题目名"
+                            remote-show-suffix
+                            :remote-method="queryAllQuestion"
+                            :loading="loading"
+                            style="width: 240px">
+                            <el-option
+                                v-for="item in allQuestionList"
+                                :key="item.value"
+                                :label="item.value+'.'+item.label"
+                                :value="item">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                </div>
+
                 <el-form-item label="属于题单">
                     <el-select
                         :disabled="!isDisable"
@@ -390,19 +468,19 @@ const filterState = (value, row, column) => {
                         </el-option>
                     </el-select>
                 </el-form-item>
-                <el-form-item label="类型">
+                <el-form-item label="标签">
                     <el-select
                         v-model="topicQuestionModel.topicType"
                         filterable
                         remote
                         reserve-keyword
-                        placeholder="请输入类型名"
+                        placeholder="请输入标签"
                         remote-show-suffix
-                        :remote-method="queryAllType"
+                        :remote-method="queryAllLabel"
                         :loading="loading"
                         style="width: 240px">
                         <el-option
-                            v-for="item in allTypeList"
+                            v-for="item in allLabelList"
                             :key="item.value"
                             :label="item.label"
                             :value="item">
@@ -410,14 +488,14 @@ const filterState = (value, row, column) => {
                     </el-select>
                 </el-form-item>
                 <el-form-item v-show="isDisable" label="题目状态">
-                    <el-radio-group v-model="topicQuestionModel.question.stateId">
+                    <el-radio-group v-model="topicQuestionModel.question.state">
                         <el-radio  :label="0" >未开始</el-radio>
                         <el-radio  :label="1" >尝试中</el-radio>
                         <el-radio  :label="2">已完成</el-radio>
                     </el-radio-group>
                 </el-form-item>
                 <el-form-item>
-                    <el-button type="primary" @click="title === '添加题目' ? addShip() : updateShip()">确认</el-button>
+                    <el-button type="primary" @click="title === '添加题目'||title === '批量添加题目' ? addShip() : updateShip()">确认</el-button>
                 </el-form-item>
             </el-form>
         </el-drawer>

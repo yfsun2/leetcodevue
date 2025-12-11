@@ -7,8 +7,8 @@ const userInfo = ref({...userInfoStore.info})
 const rules = {
     power:[],
     email: [
-        { required: true, message: '请输入用户邮箱', trigger: 'blur' },
-        { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
+        // { required: true, message: '请输入用户邮箱', trigger: 'blur' },
+        // { type: 'email', message: '邮箱格式不正确', trigger: 'blur' }
     ]
 }
 
@@ -41,10 +41,10 @@ const updateUserInfo = async ()=>{
                         <el-input v-model="userInfo.power" disabled></el-input>
                     </el-form-item>
                     <el-form-item label="用户邮箱" prop="email">
-                        <el-input v-model="userInfo.email"></el-input>
+                        <el-input v-model="userInfo.email" disabled></el-input>
                     </el-form-item>
-                    <el-form-item>
-                        <el-button type="primary" @click="updateUserInfo" :disabled="userInfo.power==='USER'">提交修改</el-button>
+                    <el-form-item v-if="false">
+                        <el-button type="primary" @click="updateUserInfo">提交修改</el-button>
                     </el-form-item>
                 </el-form>
             </el-col>

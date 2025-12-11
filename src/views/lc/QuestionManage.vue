@@ -1,17 +1,22 @@
 <script setup>
-import {Edit, Delete, CircleCheckFilled, CircleCloseFilled} from '@element-plus/icons-vue'
-import {ref, watch} from 'vue'
-import { questionPageService,addQuestionService,deleteQuestionService,updateQuestionService} from '@/api/question.js'
-import { typeListService} from '@/api/type.js'
+import {Edit, Delete, CircleCheckFilled, CircleCloseFilled, Management} from '@element-plus/icons-vue'
+import {onMounted, ref, watch} from 'vue'
+import { questionPageService,addQuestionService,deleteQuestionService,updateQuestionService,getByUrl} from '@/api/question.js'
+import { labelListService} from '@/api/label.js'
 import {ElMessage,ElMessageBox} from 'element-plus'
-
 import useUserInfoStore from '@/stores/userInfo.js'
+import {useRouter} from "vue-router";
+const route = useRouter()
+
+
+const props=defineProps(['platformId'])
+
 const userInfoStore = useUserInfoStore();
 
 const userInfo = ref({...userInfoStore.info})
 
 
-const props=defineProps(['platformId'])
+const showTag=ref(true)
 
 watch(() => props.platformId, (newValue, oldValue) => {
     console.log(`someProp changed from ${oldValue} to ${newValue}`);
@@ -20,13 +25,13 @@ watch(() => props.platformId, (newValue, oldValue) => {
 
 //模糊查询搜索词
 const search =ref({
-    name:'',
+    name:route.currentRoute.value.query.query,
     typeId:null
 })
 //问题列表
 const questionList=ref([])
-//类型
-let allTypeList=ref([])
+//标签
+let allLabelList=ref([])
 
 //分页条数据模型
 const pageNum = ref(1)//当前页
@@ -63,14 +68,12 @@ const showDialog = (row) => {
     questionModel.value.questionId = row.questionId;
     questionModel.value.name = row.name;
     questionModel.value.link = row.link;
-    questionModel.value.typeList = row.typeList?(row.typeList.map((item)=>{
+    questionModel.value.labelList = row.labelList?(row.labelList.map((item)=>{
         return {value:item.id,label:item.name}
     })):[];
-    questionModel.value.levelId = row.levelId;
-    questionModel.value.levelName = row.levelName;
+    questionModel.value.level = row.level;
     questionModel.value.difficultyScore = row.difficultyScore;
-    questionModel.value.stateId = row.stateId;
-    questionModel.value.stateName = row.stateName;
+    questionModel.value.state = row.state;
     //扩展id属性,将来需要传递给后台,完成分类的修改
     questionModel.value.id = row.id
 }
@@ -81,12 +84,11 @@ const questionModel = ref({
     questionId:'',
     name: '',
     link:"",
-    typeList:[],
-    levelId:0,
-    levelName:"",
+    labelList:[],
+    level:0,
     difficultyScore:0,
-    stateId:0,
-    stateName:""
+    state:0,
+    solutionCount:0,
 })
 
 
@@ -95,11 +97,11 @@ const onSearch = async() => {
     let params = {
         current: pageNum.value,
         size: pageSize.value,
-        search: search.value.name ,
+        search: search.value.name,
         typeId:search.value.typeId,
         platformId:props.platformId,
     }
-
+    debugger
     await questionPageService(params).then((result)=>{
         //渲染视图
         total.value = result.data.total;
@@ -109,22 +111,25 @@ const onSearch = async() => {
     })
 }
 
-onSearch();
+onMounted(()=>{
+    onSearch();
+})
 
-const queryAllType=async (query)=>{
+const queryAllLabel=async (query)=>{
     if(query){
         loading.value = true
-        let params = {search: query}
-        await typeListService(params).then((result)=>{
-            setTimeout(() => {
-                loading.value = false
-                allTypeList.value = result.data.map((item) => {
-                    return { value:item.id, label:item.name}
-                })
-            }, 200)
+        let params = {
+            search: query,
+            type:"问题"
+        }
+        await labelListService(params).then((result)=>{
+            loading.value = false
+            allLabelList.value = result.data.map((item) => {
+                return { value:item.id, label:item.name}
+            })
         })
     }else{
-        allTypeList.value=[]
+        allLabelList.value=[]
     }
 }
 
@@ -133,10 +138,10 @@ const addQuestion=async()=>{
         questionId:questionModel.value.questionId,
         name:questionModel.value.name,
         link:questionModel.value.link,
-        typeId:questionModel.value.typeList.map((item)=>item.value).join(','),
-        level:questionModel.value.levelId,
+        labelId:questionModel.value.labelList.map((item)=>item.value).join(','),
+        level:questionModel.value.level,
         difficultyScore:questionModel.value.difficultyScore,
-        state:questionModel.value.stateId,
+        state:questionModel.value.state,
         platformId:props.platformId
     }
     await addQuestionService(params).then((result)=>{
@@ -158,10 +163,10 @@ const updateQuestion = async () => {
         questionId:questionModel.value.questionId,
         name:questionModel.value.name,
         link:questionModel.value.link,
-        typeId:questionModel.value.typeList.map((item)=>item.value).join(','),
-        level:questionModel.value.levelId,
+        labelId:questionModel.value.labelList.map((item)=>item.value).join(','),
+        level:questionModel.value.level,
         difficultyScore:questionModel.value.difficultyScore,
-        state:questionModel.value.stateId
+        state:questionModel.value.state
     }
 
     //调用接口
@@ -180,13 +185,23 @@ const updateQuestion = async () => {
 //清空模型的数据
 const clearData = () => {
     //保留上次
-    //questionModel.value.questionId = '';
+    if(typeof questionModel.value.questionId==='number'){
+        questionModel.value.questionId ++;
+    }else {
+        if(questionModel.value.questionId.length===0){
+            questionModel.value.questionId='A'
+        }
+        let lastCode=questionModel.value.questionId.charCodeAt(questionModel.value.questionId.length-1);
+        let newChar=String.fromCharCode(lastCode+1);
+        questionModel.value.questionId=questionModel.value.questionId.slice(0,-1)+newChar
+    }
+    // questionModel.value.questionId ++;
     questionModel.value.name = '';
     questionModel.value.link = '';
-    questionModel.value.typeList = [];
-    questionModel.value.levelId = 0;
+    questionModel.value.labelList = [];
+    questionModel.value.level = 0;
     questionModel.value.difficultyScore =0;
-    questionModel.value.stateId = 0;
+    questionModel.value.state = 0;
 }
 
 //删除问题
@@ -224,6 +239,7 @@ const mySort=(a,b)=>{
     return Number(a)-Number(b)
 }
 
+
 </script>
 
 <template>
@@ -231,99 +247,110 @@ const mySort=(a,b)=>{
         <!--头部-->
         <template #header>
             <div class="header">
-                <span>问题管理</span>
-                <div class="extra">
-                    <el-button type="primary" @click="visibleDrawer = true;title = '添加问题';clearData();isDisable=false" :disabled="userInfo.power==='USER'">添加问题</el-button>
+                <span style="margin-right: 20px">问题管理</span>
+                <!-- 搜索表单 -->
+                <el-form inline style="max-height: 28px">
+                    <el-form-item label="名称：">
+                        <el-input  placeholder="名称" v-model="search.name" @input="onSearch" />
+                    </el-form-item>
+                    <el-form-item label="标签">
+                        <el-select
+                            v-model="search.typeId"
+                            filterable
+                            remote
+                            reserve-keyword
+                            placeholder="请输入标签"
+                            remote-show-suffix
+                            :remote-method="queryAllLabel"
+                            :loading="loading"
+                            style="width: 240px">
+                            <el-option
+                                v-for="item in allLabelList"
+                                :key="item.value"
+                                :label="item.label"
+                                :value="item.value">
+                            </el-option>
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" @click="onSearch">搜索</el-button>
+                        <el-button @click="search.name = '' ;search.typeId=null">重置</el-button>
+                    </el-form-item>
+                </el-form>
+                <div class="extra" >
+                    <el-button type="primary" @click="visibleDrawer = true;title = '添加问题';clearData();isDisable=false">添加问题</el-button>
                 </div>
             </div>
         </template>
-        <!-- 搜索表单 -->
-        <el-form inline>
-            <el-form-item label="名称：">
-                <el-input  placeholder="名称" v-model="search.name" @input="onSearch" />
-            </el-form-item>
-            <el-form-item label="类型名称">
-                <el-select
-                    v-model="search.typeId"
-                    filterable
-                    remote
-                    reserve-keyword
-                    placeholder="请输入类型名"
-                    remote-show-suffix
-                    :remote-method="queryAllType"
-                    :loading="loading"
-                    style="width: 240px">
-                    <el-option
-                        v-for="item in allTypeList"
-                        :key="item.value"
-                        :label="item.label"
-                        :value="item.value">
-                    </el-option>
-                </el-select>
-            </el-form-item>
-            <el-form-item>
-                <el-button type="primary" @click="onSearch">搜索</el-button>
-                <el-button @click="search.name = '';search.typeId=null">重置</el-button>
-            </el-form-item>
-        </el-form>
+
         <!-- 问题列表 -->
-        <el-table :data="questionList" max-height="342" style="width: 100%">
-            <el-table-column label="状态" prop="stateName" width="100" align="center"
+        <el-table :data="questionList" max-height="380" style="width: 100%">
+            <el-table-column label="状态" prop="state" width="100" align="center"
                  :filters="[
-                { text: '已完成', value: '已完成'},
-                { text: '未开始', value: '未开始' },
-                { text: '尝试中', value: '尝试中' }]"
+                { text: '已完成', value: 2},
+                { text: '未开始', value: 0 },
+                { text: '尝试中', value: 1 }]"
                :filter-method="filterState"
             >
             <template #default="scope">
-                <el-icon v-if="scope.row.stateName==='已完成'" size="20" color="#15BD66"><CircleCheckFilled /></el-icon>
-                <el-icon v-else-if="scope.row.stateName==='尝试中'" size="20" color="#fb5858"><CircleCloseFilled /></el-icon>
+                <el-icon v-if="scope.row.state===2" size="20" color="#15BD66"><CircleCheckFilled /></el-icon>
+                <el-icon v-else-if="scope.row.state===1" size="20" color="#fb5858"><CircleCloseFilled /></el-icon>
                 <el-icon v-else size="20" ></el-icon>
             </template>
             </el-table-column>
-            <el-table-column label="题目" sortable prop="questionId" :sort-method="mySort">
+            <el-table-column label="题目" sortable prop="questionId" :sort-method="mySort" width="280px">
                 <template #default="scope">
-                    <el-tooltip content="点击进入新页面" placement="top-start" effect="light">
-                        <el-link :href="scope.row.link" target="_blank" type="primary" style="text-decoration: none" :underline="false">
-                            {{scope.row.questionId}}.{{ scope.row.name }}
-                        </el-link>
-                    </el-tooltip>
+                    <el-link :href="scope.row.link" target="_blank" type="primary" style="text-decoration: none" :underline="false">
+                        {{scope.row.questionId}}.{{ scope.row.name }}
+                    </el-link>
                 </template>
             </el-table-column>
 
-            <el-table-column label="类型名称" prop="typeNameList">
+            <el-table-column label="标签" width="300px">
+                <template #header>
+                    <el-row>
+                        <el-text style="margin-right: 5px" type="info">显示标签</el-text>
+                        <el-switch v-model="showTag" />
+                    </el-row>
+                </template>
                 <template  #default="scope">
-
-                    <el-tag   v-for="item in scope.row.typeList">
+                    <el-tag   v-for="item in scope.row.labelList" v-if="showTag">
                         {{item.name}}
                     </el-tag>
-
                 </template>
             </el-table-column>
-            <el-table-column label="难易程度" prop="levelName"
+            <el-table-column label="难易程度" prop="level"
                  :filters="[
-                 { text: '简单', value: '简单'},
-                 { text: '中等', value: '中等' },
-                 { text: '困难', value: '困难' }]"
-                 :filter-method="filterState"
-            >
+                 { text: '简单', value: 0},
+                 { text: '中等', value: 1 },
+                 { text: '困难', value: 2 }]"
+                 :filter-method="filterState">
                 <template #default="scope">
-                    <el-tag v-if="scope.row.levelName==='简单'" type="success" effect="dark">
-                        {{scope.row.difficultyScore===0?scope.row.levelName:scope.row.difficultyScore}}
+                    <el-tag v-if="scope.row.level===0" type="success" effect="dark">
+                        {{scope.row.difficultyScore===0?"简单":scope.row.difficultyScore}}
                     </el-tag>
-                    <el-tag v-else-if="scope.row.levelName==='中等'" type="warning" effect="dark">
-                        {{scope.row.difficultyScore===0?scope.row.levelName:scope.row.difficultyScore}}
+                    <el-tag v-else-if="scope.row.level===1" type="warning" effect="dark">
+                        {{scope.row.difficultyScore===0?"中等":scope.row.difficultyScore}}
                     </el-tag>
                     <el-tag v-else type="danger" effect="dark">
-                        {{scope.row.difficultyScore===0?scope.row.levelName:scope.row.difficultyScore}}
+                        {{scope.row.difficultyScore===0?"困难":scope.row.difficultyScore}}
                     </el-tag>
                 </template>
             </el-table-column>
-            <el-table-column label="上次修改时间" prop="updateTime"> </el-table-column>
-            <el-table-column fixed="right" label="操作" width="100">
+            <el-table-column label="题解">
+                <template #default="scope">
+                    <router-link :to="{path:'/solution/'+scope.row.id}">
+                        <el-button type="primary" size="small">
+                            {{scope.row.solutionCount}}
+                        </el-button>
+                    </router-link>
+                </template>
+            </el-table-column>
+            <el-table-column label="上次修改时间" prop="updateTime" width="200px"> </el-table-column>
+            <el-table-column fixed="right" label="操作" min-width="100">
                 <template #default="{ row }">
-                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row);isDisable=true" :disabled="userInfo.power==='USER'"></el-button>
-                    <el-button :icon="Delete" circle plain type="danger" @click="deleteQuestion(row)" :disabled="userInfo.power==='USER'"></el-button>
+                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row);isDisable=true"></el-button>
+                    <el-button v-if="userInfo.power!=='USER'" :icon="Delete" circle plain type="danger" @click="deleteQuestion(row)" ></el-button>
                 </template>
             </el-table-column>
             <!--无数据展示-->
@@ -339,47 +366,49 @@ const mySort=(a,b)=>{
         <el-drawer v-model="visibleDrawer" :title="title" direction="rtl" size="50%">
             <!-- 添加问题表单 -->
             <el-form :model="questionModel" label-width="100px">
-                <el-form-item label="题目ID">
+                <el-form-item v-if="userInfo.power!=='USER'||title==='添加问题'" label="题目ID">
                     <el-input  v-model="questionModel.questionId"></el-input>
                 </el-form-item>
-                <el-form-item label="题目标题">
+                <el-form-item v-if="userInfo.power!=='USER'||title==='添加问题'" label="题目标题">
                     <el-input v-model="questionModel.name" placeholder="请输入题目标题"></el-input>
                 </el-form-item>
-                <el-form-item label="问题URL">
+
+                <el-form-item v-if="userInfo.power!=='USER'||title==='添加问题'" label="问题URL">
                     <el-input v-model="questionModel.link" placeholder="请输入问题URL"></el-input>
                 </el-form-item>
-                <el-form-item label="类型名称">
+
+                <el-form-item v-if="userInfo.power!=='USER'||title==='添加问题'" label="标签">
                     <el-select
-                        v-model="questionModel.typeList"
+                        v-model="questionModel.labelList"
                         multiple
                         filterable
                         remote
                         reserve-keyword
-                        placeholder="请输入类型名"
+                        placeholder="请输入标签"
                         remote-show-suffix
-                        :remote-method="queryAllType"
+                        :remote-method="queryAllLabel"
                         :loading="loading"
                         style="width: 240px">
                         <el-option
-                            v-for="item in allTypeList"
+                            v-for="item in allLabelList"
                             :key="item.value"
                             :label="item.label"
                             :value="item">
                         </el-option>
                     </el-select>
                 </el-form-item>
-                <el-form-item label="难易程度">
-                    <el-radio-group v-model="questionModel.levelId">
+                <el-form-item v-if="userInfo.power!=='USER'||title==='添加问题'" label="难易程度">
+                    <el-radio-group v-model="questionModel.level">
                         <el-radio  :label="0">简单</el-radio>
                         <el-radio  :label="1">中等</el-radio>
                         <el-radio  :label="2">困难</el-radio>
                     </el-radio-group>
                 </el-form-item>
-                <el-form-item label="难度分">
+                <el-form-item v-if="userInfo.power!=='USER'||title==='添加问题'" label="难度分">
                     <el-input-number v-model="questionModel.difficultyScore" :min="0" :max="4000" :step="50"></el-input-number>
                 </el-form-item>
-                <el-form-item label="题目状态">
-                    <el-radio-group v-model="questionModel.stateId">
+                <el-form-item  label="题目状态">
+                    <el-radio-group v-model="questionModel.state">
                         <el-radio  :label="0" >未开始</el-radio>
                         <el-radio  :label="1" >尝试中</el-radio>
                         <el-radio  :label="2">已完成</el-radio>
@@ -395,14 +424,15 @@ const mySort=(a,b)=>{
 
 <style lang="scss" scoped>
 .page-container {
-  min-height: 100%;
-  box-sizing: border-box;
+    min-height: 100%;
+    box-sizing: border-box;
+    height: 500px;
 
-  .header {
+.header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-  }
+    }
 }
 
 /* 抽屉样式 */

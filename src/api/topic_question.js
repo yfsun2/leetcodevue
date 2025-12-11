@@ -1,6 +1,6 @@
 import request from '@/utils/request.js'
 
-export const getTypeListByTopicService=(topicId)=>{
+export const getLabelsListByTopicService=(topicId)=>{
     return request.get('/topic-question/list/'+topicId);
 }
 
@@ -10,6 +10,10 @@ export const getQuestionPageByTopicAndTypeService=(params)=>{
 
 export const addTopicQuestionService=(data)=>{
     return request.post('/topic-question/add',data)
+}
+
+export const addListTopicQuestionService=(data)=>{
+    return request.post('/topic-question/addList',data)
 }
 
 export const updateTopicQuestionService=(data)=>{

@@ -1,18 +1,18 @@
 <script setup>
 import {Edit,Delete} from '@element-plus/icons-vue'
 import {ElMessage,ElMessageBox} from 'element-plus'
-import {ref, watch} from 'vue'
+import {onMounted, ref, watch} from 'vue'
 import {addContestService, contestPageService,deleteContestService,updateContestService} from '@/api/contest.js'
 import {questionListService} from "@/api/question.js";
 import QuestionItem from "@/components/QuestionItem.vue";
 import {queryByIdService} from "@/api/platform.js";
-
 import useUserInfoStore from '@/stores/userInfo.js'
 const userInfoStore = useUserInfoStore();
 
-const userInfo = ref({...userInfoStore.info})
+const props=defineProps(['platformId','platformName'])
 
-const props=defineProps(['platformId'])
+
+const userInfo = ref({...userInfoStore.info})
 
 watch(() => props.platformId, (newValue, oldValue) => {
     console.log(`someProp changed from ${oldValue} to ${newValue}`);
@@ -24,6 +24,9 @@ const questionCount=ref([0,1,2,3])
 
 //模糊查询搜索词
 const search =ref('')
+
+const prefix=ref("")
+const type=ref(4)
 
 //问题列表
 const contestList=ref([])
@@ -58,8 +61,8 @@ const showDialog = (row) => {
     visibleDrawer.value = true;
     title.value = '编辑周赛';
     //数据拷贝
+    type.value=row.type;
     contestModel.value.contestId=row.contestId;
-    contestModel.value.typeId=row.typeId;
     contestModel.value.questionList=row.questionList;
     contestModel.value.link=row.link;
     contestModel.value.questionIdNameList=row.questionList.map((item) => {
@@ -83,10 +86,17 @@ const queryCount=async ()=>{
         questionCount.value=arrId
     }
 }
+
+onMounted(()=>{
+    queryCount();
+    onSearch();
+})
 queryCount()
 
+
+
 //模糊查询所有竞赛
-const onSearch = async() => {
+async function onSearch () {
     let params = {
         current: pageNum.value,
         size: pageSize.value,
@@ -99,7 +109,6 @@ const onSearch = async() => {
     contestList.value = result.data.records;
 }
 
-onSearch();
 
 const queryAllQuestion=async (query)=>{
     if(query){
@@ -109,12 +118,10 @@ const queryAllQuestion=async (query)=>{
             platformId: props.platformId
         }
         await questionListService(params).then((result)=>{
-            setTimeout(() => {
-                loading.value = false
-                allQuestionList.value = result.data.map((item) => {
-                    return { value:item.questionId, label:item.name,id:item.id}
-                })
-            }, 200)
+            loading.value = false
+            allQuestionList.value = result.data.map((item) => {
+                return { value:item.questionId, label:item.name,id:item.id}
+            })
         })
     }else{
         allQuestionList.value=[]
@@ -123,8 +130,8 @@ const queryAllQuestion=async (query)=>{
 
 const contestModel=ref({
     id:0,
-    contestId:0,
-    typeId:0,
+    contestId:'',
+    type:0,
     link:'',
     questionList:[],
     questionIdNameList:[],
@@ -134,9 +141,9 @@ const contestModel=ref({
 
 const addContest=async()=>{
     let params = {
-        contestId:contestModel.value.contestId,
+        contestId:prefix.value+contestModel.value.contestId,
+        type:type.value,
         platformId:props.platformId,
-        type:contestModel.value.typeId,
         link:contestModel.value.link,
         questionIdList:contestModel.value.questionIdNameList.map((item)=>item.id),
         startTime:contestModel.value.startTime,
@@ -148,7 +155,6 @@ const addContest=async()=>{
         onSearch()
     }).catch((err)=>{
         console.log(err)
-        ElMessage.error('添加失败');
     })
 }
 
@@ -156,9 +162,9 @@ const addContest=async()=>{
 const updateContest= async () => {
     let params = {
         id:contestModel.value.id,
-        contestId:contestModel.value.contestId,
+        contestId:prefix.value+contestModel.value.contestId,
+        type:type.value,
         platformId:props.platformId,
-        type:contestModel.value.typeId,
         link:contestModel.value.link,
         questionIdList:contestModel.value.questionIdNameList.map((item)=>item.id),
         startTime:contestModel.value.startTime,
@@ -172,12 +178,11 @@ const updateContest= async () => {
          onSearch()
     }).catch(err=>{
         console.log(err)
-        ElMessage.error('修改失败')
     })
 }
 
 
-//删除问题
+//删除周赛
 const deleteContest = (row) => {
     //提示用户  确认框
     ElMessageBox.confirm(
@@ -205,15 +210,14 @@ const deleteContest = (row) => {
 
 //清空模型的数据
 const clearData = () => {
-    contestModel.value.contestId = 0;
-    contestModel.value.typeId = 0;
+    contestModel.value.contestId = '';
     contestModel.value.questionIdNameList = [];
 }
 
 const tableCellClassName=({rowIndex,columnIndex,row})=>{
-    if(columnIndex>0&&row.questionList[columnIndex-1]?.stateName==="已完成"){
+    if(columnIndex>0&&row.questionList[columnIndex-1]?.state===2){
         return 'success-cell'
-    }else if(columnIndex>0&&row.questionList[columnIndex-1]?.stateName==="尝试中"){
+    }else if(columnIndex>0&&row.questionList[columnIndex-1]?.state===1){
         return 'warning-cell'
     }else {
         return ''
@@ -227,60 +231,57 @@ const tableCellClassName=({rowIndex,columnIndex,row})=>{
         <template #header>
             <div class="header">
                 <span>周赛管理</span>
+                <!-- 搜索表单 -->
+                <el-form inline style="max-height: 28px">
+                    <el-form-item label="名称：">
+                        <el-input  placeholder="名称" v-model="search" @input="onSearch"/>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" @click="onSearch">搜索</el-button>
+                        <el-button @click="search = '';">重置</el-button>
+                    </el-form-item>
+                </el-form>
                 <div class="extra">
-                    <el-button type="primary" @click="visibleDrawer = true;title = '添加周赛';clearData();isDisable=false" :disabled="userInfo.power==='USER'">添加周赛</el-button>
+                    <el-button type="primary" @click="visibleDrawer = true;title = '添加周赛';clearData();isDisable=false">添加周赛</el-button>
                 </div>
             </div>
         </template>
-        <!-- 搜索表单 -->
-        <el-form inline>
-            <el-form-item label="名称：">
-                <el-input  placeholder="名称" v-model="search" @input="onSearch"/>
-            </el-form-item>
-            <el-form-item>
-                <el-button type="primary" @click="onSearch">搜索</el-button>
-                <el-button @click="search = '';">重置</el-button>
-            </el-form-item>
-        </el-form>
+
         <!-- 周赛列表 -->
-        <el-table :data="contestList" height="342" style="width: 100%" :cell-class-name="tableCellClassName">
+        <el-table :data="contestList" height="380" style="width: 100%" :cell-class-name="tableCellClassName">
             <el-table-column label="竞赛" align="center">
                 <template #default="scope">
-                    <el-tooltip
-                        :content="'第'+scope.row.contestId+'场'+((scope.row.typeId===1)?'双周赛':'周赛')"
-                        placement="top-start"
-                        effect="light">
-                        <el-link :href="scope.row.link" target="_blank" style="text-decoration: none" :underline="false">
-                            第
-                            <el-text v-if="scope.row.typeId===0" type="primary">
-                                {{scope.row.contestId}}
-                            </el-text>
-                            <el-text v-else type="warning">
-                                {{scope.row.contestId}}
-                            </el-text>
-                            场
-                            <el-text v-if="scope.row.typeId===0" type="primary">
-                                周赛
-                            </el-text>
-                            <el-text v-else type="warning">
-                                双周赛
-                            </el-text>
-                        </el-link>
-                    </el-tooltip>
+                    <el-link :href="scope.row.link" target="_blank" style="text-decoration: none" :underline="false">
+                        <el-text type="primary" v-if="scope.row.type===0">
+                            {{scope.row.contestId}}
+                        </el-text>
+                        <el-text type="warning" v-else-if="scope.row.type===1">
+                            {{scope.row.contestId}}
+                        </el-text>
+                        <el-text type="danger" v-else-if="scope.row.type===2">
+                            {{scope.row.contestId}}
+                        </el-text>
+                        <el-text type="success" v-else-if="scope.row.type===3">
+                            {{scope.row.contestId}}
+                        </el-text>
+                        <el-text type="info" v-else>
+                            {{scope.row.contestId}}
+                        </el-text>
+                    </el-link>
                 </template>
             </el-table-column>
             <el-table-column label="问题" align="center" >
-                <el-table-column v-for="index in questionCount" :label="'Q'+(index+1)" align="center">
+                <el-table-column v-for="index in questionCount" :label="'Q'+(index+1)" align="center" >
                     <template #default="scope">
-                        <QuestionItem  v-if="scope.row.questionList.length>0&&scope.row.questionList[index]" :item="scope.row.questionList[index]"></QuestionItem>
+                        <QuestionItem  v-if="scope.row.questionList.length>0&&scope.row.questionList[index]" :item="scope.row.questionList[index]" :platform-id="props.platformId" :platform-name="props.platformName" :index="index+1"></QuestionItem>
                     </template>
                 </el-table-column>
             </el-table-column>
             <el-table-column label="开始时间" prop="startTime" align="center" sortable></el-table-column>
             <el-table-column  label="操作" width="150" align="center">
                 <template #default="{ row }">
-                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row);isDisable=true" :disabled="userInfo.power==='USER'"></el-button>
-                    <el-button :icon="Delete" circle plain type="danger" @click="deleteContest(row)" :disabled="userInfo.power==='USER'"></el-button>
+                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row);isDisable=true" ></el-button>
+                    <el-button :icon="Delete" circle plain type="danger" @click="deleteContest(row)" ></el-button>
                 </template>
             </el-table-column>
             <template #empty>
@@ -288,7 +289,7 @@ const tableCellClassName=({rowIndex,columnIndex,row})=>{
             </template>
         </el-table>
         <!-- 分页条 -->
-        <el-pagination v-model:current-page="pageNum" v-model:page-size="pageSize" :page-sizes="[3, 5, 10, 15]"
+        <el-pagination v-model:current-page="pageNum" v-model:page-size="pageSize" :page-sizes="[10,20,50]"
                        layout="jumper, total, sizes, prev, pager, next" background :total="total" @size-change="onSizeChange"
                        @current-change="onCurrentChange" style="margin-top: 20px; justify-content: flex-end" />
 
@@ -297,13 +298,25 @@ const tableCellClassName=({rowIndex,columnIndex,row})=>{
             <!-- 添加&编辑问题表单 -->
             <el-form :model="contestModel" label-width="100px">
                 <el-form-item label="周赛ID">
-                    <el-input-number v-model="contestModel.contestId" :min="1" :max="1000" :step="1"></el-input-number>
-                </el-form-item>
-                <el-form-item label="周赛类型">
-                    <el-radio-group v-model="contestModel.typeId">
-                        <el-radio  :label="0">单周赛</el-radio>
-                        <el-radio  :label="1">双周赛</el-radio>
-                    </el-radio-group>
+                    <el-input v-model="contestModel.contestId">
+<!--                        v-if="title==='添加周赛'"-->
+                        <template #prepend >
+                            <el-select v-model="prefix" placeholder="周赛类型" style="width: 200px">
+                                <el-option label="空" value="" ></el-option>
+                                <el-option label="Weekly Contest" value="Weekly Contest " @click="type=0"></el-option>
+                                <el-option label="Biweekly Contest" value="Biweekly Contest " @click="type=1"></el-option>
+                                <el-option label="Codeforces Round" value="Codeforces Round " @click="type=0"></el-option>
+                                <el-option label="Educational Codeforces Round" value="Educational Codeforces Round " @click="type=1"></el-option>
+                                <el-option label="AtCoder Beginner Contest" value="AtCoder Beginner Contest " @click="type=0"></el-option>
+                                <el-option label="AtCoder Regular Contest" value="AtCoder Regular Contest " @click="type=1"></el-option>
+                                <el-option label="AtCoder Grand Contest" value="AtCoder Grand Contest " @click="type=2"></el-option>
+                                <el-option label="牛客周赛 Round" value="牛客周赛 Round " @click="type=0"></el-option>
+                                <el-option label="牛客小白月赛" value="牛客小白月赛" @click="type=3"></el-option>
+                                <el-option label="牛客练习赛" value="牛客练习赛" @click="type=1"></el-option>
+                                <el-option label="牛客挑战赛" value="牛客挑战赛" @click="type=2"></el-option>
+                            </el-select>
+                        </template>
+                    </el-input>
                 </el-form-item>
 
                 <el-form-item label="周赛链接">
@@ -358,6 +371,7 @@ const tableCellClassName=({rowIndex,columnIndex,row})=>{
 .page-container {
     min-height: 100%;
     box-sizing: border-box;
+    height: 500px;
 
     .header {
         display: flex;

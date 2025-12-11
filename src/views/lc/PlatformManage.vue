@@ -1,10 +1,14 @@
 <script setup>
 import {Edit, Delete} from '@element-plus/icons-vue'
-import {ref} from 'vue'
+import {onMounted, ref} from 'vue'
 import { platformListService,addPlatformService ,deletePlatformService,updatePlatformService} from '@/api/platform.js'
 import {ElMessage,ElMessageBox} from 'element-plus'
 
+import {useTokenStore} from '@/stores/token.js'
+const tokenStore = useTokenStore();
+
 import useUserInfoStore from '@/stores/userInfo.js'
+import avatar from "@/assets/default.png";
 const userInfoStore = useUserInfoStore();
 
 const userInfo = ref({...userInfoStore.info})
@@ -28,6 +32,7 @@ const showDialog = (row) => {
     //数据拷贝
     platformModel.value.name = row.name;
     platformModel.value.questionCount=row.questionCount;
+    platformModel.value.logo=row.logo;
     //扩展id属性,将来需要传递给后台,完成分类的修改
     platformModel.value.id = row.id
 }
@@ -36,7 +41,8 @@ const showDialog = (row) => {
 const platformModel = ref({
     id:0,
     name: '',
-    questionCount:0
+    questionCount:0,
+    logo:''
 })
 
 //模糊查询
@@ -52,8 +58,9 @@ const onSearch = async(val) => {
     })
 }
 
-onSearch();
-
+onMounted(()=>{
+    onSearch();
+})
 
 const onAddPlatform=async()=>{
     let params = {
@@ -81,6 +88,7 @@ const updatePlatform = async () => {
         id:platformModel.value.id,
         name:platformModel.value.name,
         questionCount:platformModel.value.questionCount,
+        logo:platformModel.value.logo
     }
     //调用接口
     await updatePlatformService(params).then(result=>{
@@ -100,6 +108,7 @@ const updatePlatform = async () => {
 const clearData = () => {
     platformModel.value.id=0;
     platformModel.value.name = '';
+    platformModel.value.logo='';
 }
 
 //删除分类
@@ -125,6 +134,11 @@ const deletePlatform = (row) => {
     })
 }
 
+//图片上传成功的回调函数
+const uploadSuccess = (result)=>{
+    platformModel.value.logo = result.data.fileUrl;
+}
+
 </script>
 
 <template>
@@ -132,31 +146,37 @@ const deletePlatform = (row) => {
         <template #header>
             <div class="header">
                 <span>平台管理</span>
+                <!-- 搜索表单 -->
+                <el-form inline style="max-height: 28px">
+                    <el-form-item label="名称：">
+                        <el-input  placeholder="名称" v-model="search" @input="onSearch"/>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" @click="onSearch">搜索</el-button>
+                        <el-button @click="search = '';">重置</el-button>
+                    </el-form-item>
+                </el-form>
                 <div class="extra">
-                    <el-button type="primary" @click="dialogVisible = true;title = '添加平台';clearData()" :disabled="userInfo.power==='USER'">添加平台</el-button>
+                    <el-button type="primary" @click="dialogVisible = true;title = '添加平台';clearData()">添加平台</el-button>
                 </div>
             </div>
         </template>
-        <!-- 搜索表单 -->
-        <el-form inline>
-            <el-form-item label="名称：">
-                <el-input  placeholder="名称" v-model="search" @input="onSearch"/>
-            </el-form-item>
-            <el-form-item>
-                <el-button type="primary" @click="onSearch">搜索</el-button>
-                <el-button @click="search = '';">重置</el-button>
-            </el-form-item>
-        </el-form>
+
         <!-- 类型列表 -->
         <el-table :data="platformList" style="width: 100%">
-<!--            <el-table-column label="平台ID" prop="id"></el-table-column>-->
             <el-table-column label="平台名称" prop="name" align="center"></el-table-column>
             <el-table-column label="竞赛题目数" prop="questionCount" align="center"></el-table-column>
+            <el-table-column label="平台logo" align="center">
+                <template #default="{row}" >
+                    <img v-if="row.logo" :src="row.logo" style="width: 20px"/>
+                    <img v-else :src="avatar" width="20px" />
+                </template>
+            </el-table-column>
             <el-table-column label="上次修改时间" prop="updateTime" align="center"> </el-table-column>
             <el-table-column label="操作" width="100">
                 <template #default="{ row }">
-                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row)" :disabled="userInfo.power==='USER'"></el-button>
-                    <el-button :icon="Delete" circle plain type="danger" @click="deletePlatform(row)" :disabled="userInfo.power==='USER'"></el-button>
+                    <el-button :icon="Edit" circle plain type="primary" @click="showDialog(row)"></el-button>
+                    <el-button :icon="Delete" circle plain type="danger" @click="deletePlatform(row)"></el-button>
                 </template>
             </el-table-column>
             <template #empty>
@@ -171,8 +191,24 @@ const deletePlatform = (row) => {
                     <el-input v-model="platformModel.name" minlength="1"></el-input>
                 </el-form-item>
                 <el-form-item label="竞赛题目数量" prop="questionCount">
-                    <el-input-number v-model="platformModel.questionCount" :min="4" :max="8"></el-input-number>
+                    <el-input-number v-model="platformModel.questionCount" :min="4" :max="10"></el-input-number>
                 </el-form-item>
+                <el-form-item label="平台logo">
+                    <el-upload
+                        ref="uploadRef"
+                        class="avatar-uploader"
+                        :show-file-list="false"
+                        :auto-upload="true"
+                        action="/api/file/upload"
+                        name="file"
+                        :headers="{'Authorization':tokenStore.token}"
+                        :on-success="uploadSuccess"
+                    >
+                        <img v-if="platformModel.logo" :src="platformModel.logo" class="avatar" />
+                        <img v-else :src="avatar" width="50" />
+                    </el-upload>
+                </el-form-item>
+
             </el-form>
             <template #footer>
                     <span class="dialog-footer">
@@ -185,6 +221,12 @@ const deletePlatform = (row) => {
 </template>
 
 <style lang="scss" scoped>
+
+.avatar {
+    width: 50px;
+    height: 50px;
+    display: block;
+}
 .page-container {
     min-height: 100%;
     box-sizing: border-box;

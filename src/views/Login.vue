@@ -48,7 +48,6 @@ const rules = {
 
 const register = async () => {
     //registerData是一个响应式对象,如果要获取值,需要.value
-    debugger
     await userRegisterService(registerData.value).then(result=>{
         ElMessage.success(result.msg ? result.msg : '注册成功')
         isRegister.value = false
@@ -117,7 +116,8 @@ const sendEmail=async ()=>{
 
 <template>
     <el-row class="login-page">
-        <el-col :span="12" class="bg"></el-col>
+        <el-col :span="12" class="bg">
+        </el-col>
         <el-col :span="6" :offset="3" class="form">
             <!-- 注册表单 -->
             <el-form ref="form" size="large" autocomplete="off" v-if="isRegister" :model="registerData" :rules="rules">
@@ -200,7 +200,7 @@ const sendEmail=async ()=>{
     background-color: #fff;
 
     .bg {
-        background: url('@/assets/leetcode.svg') no-repeat 60% center / 240px auto,
+        background: url('@/assets/logo.svg') no-repeat 60% center / 240px auto,
             url('@/assets/login_bg.jpg') no-repeat center / cover;
         border-radius: 0 20px 20px 0;
     }
